@@ -1,0 +1,12 @@
+[package]
+name = "reefer"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+assert-invariants = []
+
+[dependencies]
+generic-array = "1.1.0"
+num-traits = "0.2.19"
+typenum = "1.17.0"
