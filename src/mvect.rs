@@ -1,510 +1,451 @@
 #![allow(unused_imports)]
 use crate::{
-    basis::{BNew, Basis, BasisCart, BasisInfo, IntoBasis, ZeroVector},
+    basis::{BNew, BProd, Basis, BasisCart, BasisInfo, IntoBasis, ZeroVector},
+    collector::{CartXorCollectInto, CartXorCollector, CollectInto, Collector},
     field::Field,
-    metric::Metric,
+    metric::{IntFromSwapParityWithOverlaps, Metric},
     utils::{
         typeset::{Intersect, IntersectMerge, Sort, Sorted, Union, UnionMerge},
-        Contains, Flat, Flatten, IdxOf, If, IndexOf,
+        At, Branch, Contains, Count, CountOf, Flat, Flatten, Get, IdxOf, If, IndexOf, SwapPar,
     },
 };
 use core::marker::PhantomData;
-use core::ops::{Add, Mul, Sub};
+use core::ops::{Add, BitAnd, BitOr, BitXor, Mul, Not, Sub};
 use generic_array::{ArrayLength, GenericArray};
 use typenum::{
-    tarr, ATerm, Add1, Bit, Eq, IsEqual, Len, Length, Sum, TArr, TypeArray, Unsigned, B0, B1,
+    tarr, ATerm, Abs, Add1, And, Bit, Eq, IsEqual, IsNotEqual, Len, Length, NotEq, Or, Sum, TArr,
+    TypeArray, Unsigned, Xor, B0, B1, U0, U1,
 };
 
 /// multivector
 #[derive(Clone)]
-pub struct Mvect<NS: Len<Output: ArrayLength>, F: Field>(GenericArray<F, Length<NS>>)
-where
-    Self: MvectInfo;
+pub struct Mvect<BS: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field>(
+    GenericArray<F, Length<BS>>,
+    PhantomData<M>,
+);
 
-impl<NS: TypeArray + Len, F: Field> Default for Mvect<NS, F>
+/// BasisSet stores the Bitmask of the Basis elements that are present in the multivector. Together with the metric, this is enough to recover each Basis.
+pub trait BasisSet<M: Metric>: TypeArray {
+    type Output;
+}
+impl<M: Metric> BasisSet<M> for ATerm {
+    type Output = ATerm;
+}
+impl<BS: BasisSet<M> + Len<Output: Unsigned + ArrayLength + Add<B1>>, U: Unsigned, M: Metric>
+    BasisSet<M> for TArr<U, BS>
 where
-    Self: MvectInfo,
-    Length<NS>: Unsigned + ArrayLength,
+    Basis<U, M, B0>: BasisInfo,
+{
+    type Output = TArr<U, BS>;
+}
+
+impl<BS: BasisSet<M> + Len<Output: Unsigned + ArrayLength>, M: Metric, F: Field> Mvect<BS, M, F> {
+    /// Create a new multivector from a GenericArray of field elements.
+    #[inline(always)]
+    pub fn new(data: GenericArray<F, Length<BS>>) -> Self {
+        Mvect(data, PhantomData)
+    }
+    /// Length of the multivector
+    #[inline(always)]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+// Default - create a new multivector with all elements set to zero
+impl<BS: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> core::default::Default
+    for Mvect<BS, M, F>
+// where
+//     Self: MvectInfo,
 {
     /// Create a new multivector from a GenericArray of field elements.
     #[inline(always)]
     fn default() -> Self {
-        Mvect(GenericArray::<F, Length<NS>>::default())
+        Mvect(GenericArray::<F, Length<BS>>::default(), PhantomData)
     }
 }
 
-impl<NS: TypeArray + Len, F: Field> Len for Mvect<NS, F>
+// IntoMv - convert a Basis or ZeroVector type into a Mvect instance
+pub trait IntoMv<F: Field> {
+    type Output;
+    fn into_mv() -> Self::Output;
+}
+impl<F: Field, U: Unsigned, M: Metric, S: Bit> IntoMv<F> for Basis<U, M, S>
 where
-    Self: MvectInfo,
-    Length<NS>: Unsigned + ArrayLength,
+    Basis<U, M, S>: BasisInfo,
+    Basis<U, M, B0>: BasisInfo,
 {
-    type Output = Length<NS>;
-    fn len(&self) -> Self::Output {
-        Self::Output::default()
-    }
-}
-
-// -------------------------------------
-// Mvect comptime info table (currently just used for trait bounds)
-pub trait MvectInfo: Default + Len {}
-impl<NS: TypeArray + Len<Output: Unsigned + ArrayLength>, F: Field> MvectInfo for Mvect<NS, F> {}
-
-// -------------------------------------
-// Placeholder for Mvect cartesian product info table (currently unneeded)
-// pub trait MvectCart<Rhs> {
-//     type Intersection: MvectInfo;
-//     type Union: MvectInfo;
-//     type Mul: MvectInfo;
-// }
-
-// impl<
-//         L: TypeArray
-//             + Len<Output: ArrayLength>
-//             + IntersectMerge<R, Output: TypeArray + Len<Output: ArrayLength>>
-//             + UnionMerge<R, Output: TypeArray + Len<Output: ArrayLength>>,
-//         R: TypeArray + Len<Output: ArrayLength>,
-//         F: Field,
-//     > MvectCart<Mvect<R, F>> for Mvect<L, F>
-// where
-//     Self: MvectInfo,
-//     Mvect<R, F>: MvectInfo,
-// {
-//     type Intersection = Mvect<Intersect<L, R>, F>;
-//     type Union = Mvect<Union<L, R>, F>;
-//     type Mul = Self;
-// }
-
-// --------------------------------------------
-// multivector addition
-
-/// MvAdd is used to recursively generate code at compile time from the BasisInfo TypeArray
-///
-/// all of the fn calls should be inlined by the compiler.
-/// note that none of actual calls are self-recursing,
-/// each is just calling the next fn in the chain
-pub trait MvAdd<L: TypeArray, R: TypeArray>
-where
-    Self: Field,
-{
-    fn add(out: &mut [Self], lhs: &[Self], rhs: &[Self]);
-}
-// 0 + 0 = 0
-impl<F: Field> MvAdd<ATerm, ATerm> for F {
-    #[inline(always)]
-    fn add(_out: &mut [F], _lhs: &[F], _rhs: &[F]) {
-        #[cfg(feature = "assert-invariants")]
-        {
-            assert_eq!(_out.len(), 0);
-            assert_eq!(_lhs.len(), 0);
-            assert_eq!(_rhs.len(), 0);
-        }
-    }
-}
-// 0 + B = B
-impl<F: Field + MvAdd<ATerm, B>, R: Unsigned, B: TypeArray> MvAdd<ATerm, TArr<R, B>> for F {
-    #[inline(always)]
-    fn add(out: &mut [F], lhs: &[F], rhs: &[F]) {
-        #[cfg(feature = "assert-invariants")]
-        {
-            assert_eq!(lhs.len(), 0);
-            assert_eq!(rhs.len(), Length::<B>::USIZE + 1);
-        }
-        out[0] += rhs[0].clone();
-        <F as MvAdd<ATerm, B>>::add(&mut out[1..], lhs, &rhs[1..]);
-    }
-}
-// A + 0 = A
-impl<F: Field + MvAdd<A, ATerm>, L: Unsigned, A: TypeArray> MvAdd<TArr<L, A>, ATerm> for F {
-    #[inline(always)]
-    fn add(out: &mut [F], lhs: &[F], rhs: &[F]) {
-        #[cfg(feature = "assert-invariants")]
-        {
-            assert_eq!(lhs.len(), Length::<A>::USIZE + 1);
-            assert_eq!(rhs.len(), 0);
-        }
-        out[0] += lhs[0].clone();
-        <F as MvAdd<A, ATerm>>::add(&mut out[1..], &lhs[1..], rhs);
-    }
-}
-// A + B
-impl<F: Field, L: Unsigned, R: Unsigned, A: TypeArray, B: TypeArray> MvAdd<TArr<L, A>, TArr<R, B>>
-    for F
-where
-    for<'a> F: MvAdd<A, B>,
-    for<'a> F: MvAdd<TArr<L, A>, B>,
-    for<'a> F: MvAdd<A, TArr<R, B>>,
-{
-    #[inline(always)]
-    fn add(out: &mut [F], lhs: &[F], rhs: &[F]) {
-        #[cfg(feature = "assert-invariants")]
-        {
-            assert_eq!(lhs.len(), Length::<A>::USIZE + 1);
-            assert_eq!(rhs.len(), Length::<B>::USIZE + 1);
-        }
-        if L::USIZE < R::USIZE {
-            out[0] += lhs[0].clone();
-            <F as MvAdd<A, TArr<R, B>>>::add(&mut out[1..], &lhs[1..], rhs);
-        } else if L::USIZE > R::USIZE {
-            out[0] += rhs[0].clone();
-            <F as MvAdd<TArr<L, A>, B>>::add(&mut out[1..], lhs, &rhs[1..]);
+    type Output = Mvect<tarr![U], M, F>;
+    fn into_mv() -> Self::Output {
+        let mut out = Mvect::<tarr![U], M, F>::default();
+        if S::BOOL {
+            out.0[0] = -F::one();
         } else {
-            out[0] += lhs[0].clone();
-            out[0] += rhs[0].clone();
-            <F as MvAdd<A, B>>::add(&mut out[1..], &lhs[1..], &rhs[1..]);
+            out.0[0] = F::one();
         }
+        out
     }
 }
-// Add impl does the Type-level setup and calls the MvAdd impl
-impl<
-        Lhs: TypeArray + Len<Output: ArrayLength> + UnionMerge<Rhs, Output: Len<Output: ArrayLength>>,
-        Rhs: TypeArray + Len<Output: ArrayLength>,
-        F: Field + MvAdd<Lhs, Rhs>,
-    > Add<&Mvect<Rhs, F>> for &Mvect<Lhs, F>
-where
-    Mvect<Lhs, F>: MvectInfo,
-    Mvect<Rhs, F>: MvectInfo,
-{
-    type Output = Mvect<Union<Lhs, Rhs>, F>;
-    #[inline(always)]
-    fn add(self, rhs: &Mvect<Rhs, F>) -> Self::Output {
-        let mut out = GenericArray::<F, Length<Union<Lhs, Rhs>>>::default();
-        <F as MvAdd<Lhs, Rhs>>::add(&mut out, &self.0, &rhs.0);
-        Mvect(out)
+
+// PartialEq - compare two multivectors
+struct MvPartialEq;
+impl<'a, F: Field> Collector<F, bool> for MvPartialEq {
+    fn collect_both(out: bool, left: &F, right: &F) -> bool {
+        out && left == right
+    }
+    fn collect_just_left(out: bool, left: &F) -> bool {
+        out && left == &F::zero()
+    }
+    fn collect_just_right(out: bool, right: &F) -> bool {
+        out && &F::zero() == right
     }
 }
-// Basically the same as the above impl, but without the &s. Gives "expected" syntax for Field types that derive Copy
 impl<
-        Lhs: TypeArray + Len<Output: ArrayLength> + UnionMerge<Rhs, Output: Len<Output: ArrayLength>>,
-        Rhs: TypeArray + Len<Output: ArrayLength>,
-        F: Field + MvAdd<Lhs, Rhs>,
-    > Add<Mvect<Rhs, F>> for Mvect<Lhs, F>
-where
-    Mvect<Lhs, F>: MvectInfo,
-    Mvect<Rhs, F>: MvectInfo,
+        BS: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric,
+        F: core::cmp::Eq + Field + CollectInto<F, MvPartialEq, bool, BS, BS>,
+    > core::cmp::Eq for Mvect<BS, M, F>
 {
-    type Output = Mvect<Union<Lhs, Rhs>, F>;
-    #[inline(always)]
-    fn add(self, rhs: Mvect<Rhs, F>) -> Self::Output {
+}
+impl<
+        BS: BasisSet<M> + Len<Output: ArrayLength>,
+        RBS: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric,
+        F: Field + CollectInto<F, MvPartialEq, bool, BS, RBS>,
+    > core::cmp::PartialEq<Mvect<RBS, M, F>> for Mvect<BS, M, F>
+{
+    fn eq(&self, other: &Mvect<RBS, M, F>) -> bool {
+        MvPartialEq::do_collect::<BS, RBS>(true, &self.0, &other.0)
+    }
+}
+
+// Add - add two multivectors
+struct MvAdd;
+impl<F: Field> Collector<F, &mut [F]> for MvAdd {
+    fn collect_both<'a>(out: &'a mut [F], left: &F, right: &F) -> &'a mut [F] {
+        out[0] += left.clone();
+        out[0] += right.clone();
+        &mut out[1..]
+    }
+    fn collect_just_left<'a>(out: &'a mut [F], left: &F) -> &'a mut [F] {
+        out[0] += left.clone();
+        &mut out[1..]
+    }
+    fn collect_just_right<'a>(out: &'a mut [F], right: &F) -> &'a mut [F] {
+        out[0] += right.clone();
+        &mut out[1..]
+    }
+}
+impl<
+        LBS: BasisSet<M>
+            + Len<Output: ArrayLength>
+            + UnionMerge<RBS, Output: BasisSet<M> + Len<Output: ArrayLength>>,
+        RBS: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric,
+        F: Field + for<'a> CollectInto<F, MvAdd, &'a mut [F], LBS, RBS>,
+    > Add<&Mvect<RBS, M, F>> for &Mvect<LBS, M, F>
+{
+    type Output = Mvect<Union<LBS, RBS>, M, F>;
+    fn add(self, rhs: &Mvect<RBS, M, F>) -> Self::Output {
+        let mut out = Self::Output::default();
+        MvAdd::do_collect::<LBS, RBS>(&mut out.0, &self.0, &rhs.0);
+        out
+    }
+}
+impl<
+        LBS: BasisSet<M>
+            + Len<Output: ArrayLength>
+            + UnionMerge<RBS, Output: BasisSet<M> + Len<Output: ArrayLength>>,
+        RBS: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric,
+        F: Field + for<'a> CollectInto<F, MvAdd, &'a mut [F], LBS, RBS>,
+    > Add<Mvect<RBS, M, F>> for Mvect<LBS, M, F>
+{
+    type Output = Mvect<Union<LBS, RBS>, M, F>;
+    fn add(self, rhs: Mvect<RBS, M, F>) -> Self::Output {
         &self + &rhs
     }
 }
 
-// --------------------------------------------
-// multivector subtraction - see addition above
-pub trait MvSub<L: TypeArray, R: TypeArray>
-where
-    Self: Field,
-{
-    fn sub(out: &mut [Self], lhs: &[Self], rhs: &[Self]);
-}
-impl<F: Field> MvSub<ATerm, ATerm> for F {
-    #[inline(always)]
-    fn sub(_out: &mut [F], _lhs: &[F], _rhs: &[F]) {
-        #[cfg(feature = "assert-invariants")]
-        {
-            assert_eq!(_out.len(), 0);
-            assert_eq!(_lhs.len(), 0);
-            assert_eq!(_rhs.len(), 0);
-        }
+// Sub - subtract two multivectors
+struct MvSub;
+impl<F: Field> Collector<F, &mut [F]> for MvSub {
+    fn collect_both<'a>(out: &'a mut [F], left: &F, right: &F) -> &'a mut [F] {
+        out[0] -= left.clone();
+        out[0] -= right.clone();
+        &mut out[1..]
     }
-}
-impl<F: Field + MvSub<ATerm, B>, R: Unsigned, B: TypeArray> MvSub<ATerm, TArr<R, B>> for F {
-    #[inline(always)]
-    fn sub(out: &mut [F], lhs: &[F], rhs: &[F]) {
-        #[cfg(feature = "assert-invariants")]
-        {
-            assert_eq!(lhs.len(), 0);
-            assert_eq!(rhs.len(), Length::<B>::USIZE + 1);
-        }
-        out[0] -= rhs[0].clone();
-        <F as MvSub<ATerm, B>>::sub(&mut out[1..], lhs, &rhs[1..]);
+    fn collect_just_left<'a>(out: &'a mut [F], left: &F) -> &'a mut [F] {
+        out[0] -= left.clone();
+        &mut out[1..]
     }
-}
-impl<F: Field + MvSub<A, ATerm>, L: Unsigned, A: TypeArray> MvSub<TArr<L, A>, ATerm> for F {
-    #[inline(always)]
-    fn sub(out: &mut [F], lhs: &[F], rhs: &[F]) {
-        #[cfg(feature = "assert-invariants")]
-        {
-            assert_eq!(lhs.len(), Length::<A>::USIZE + 1);
-            assert_eq!(rhs.len(), 0);
-        }
-        out[0] -= lhs[0].clone();
-        <F as MvSub<A, ATerm>>::sub(&mut out[1..], &lhs[1..], rhs);
-    }
-}
-impl<F: Field, L: Unsigned, R: Unsigned, A: TypeArray, B: TypeArray> MvSub<TArr<L, A>, TArr<R, B>>
-    for F
-where
-    for<'a> F: MvSub<A, B>,
-    for<'a> F: MvSub<TArr<L, A>, B>,
-    for<'a> F: MvSub<A, TArr<R, B>>,
-{
-    #[inline(always)]
-    fn sub(out: &mut [F], lhs: &[F], rhs: &[F]) {
-        #[cfg(feature = "assert-invariants")]
-        {
-            assert_eq!(lhs.len(), Length::<A>::USIZE + 1);
-            assert_eq!(rhs.len(), Length::<B>::USIZE + 1);
-        }
-        if L::USIZE < R::USIZE {
-            out[0] -= lhs[0].clone();
-            <F as MvSub<A, TArr<R, B>>>::sub(&mut out[1..], &lhs[1..], rhs);
-        } else if L::USIZE > R::USIZE {
-            out[0] -= rhs[0].clone();
-            <F as MvSub<TArr<L, A>, B>>::sub(&mut out[1..], lhs, &rhs[1..]);
-        } else {
-            out[0] -= lhs[0].clone();
-            out[0] -= rhs[0].clone();
-            <F as MvSub<A, B>>::sub(&mut out[1..], &lhs[1..], &rhs[1..]);
-        }
+    fn collect_just_right<'a>(out: &'a mut [F], right: &F) -> &'a mut [F] {
+        out[0] -= right.clone();
+        &mut out[1..]
     }
 }
 impl<
-        Lhs: TypeArray + Len<Output: ArrayLength> + UnionMerge<Rhs, Output: Len<Output: ArrayLength>>,
-        Rhs: TypeArray + Len<Output: ArrayLength>,
-        F: Field + MvSub<Lhs, Rhs>,
-    > Sub<&Mvect<Rhs, F>> for &Mvect<Lhs, F>
-where
-    Mvect<Lhs, F>: MvectInfo,
-    Mvect<Rhs, F>: MvectInfo,
+        LBS: BasisSet<M>
+            + Len<Output: ArrayLength>
+            + UnionMerge<RBS, Output: BasisSet<M> + Len<Output: ArrayLength>>,
+        RBS: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric,
+        F: Field + for<'a> CollectInto<F, MvSub, &'a mut [F], LBS, RBS>,
+    > Sub<&Mvect<RBS, M, F>> for &Mvect<LBS, M, F>
 {
-    type Output = Mvect<Union<Lhs, Rhs>, F>;
-    #[inline(always)]
-    fn sub(self, rhs: &Mvect<Rhs, F>) -> Self::Output {
-        let mut out = GenericArray::<F, Length<Union<Lhs, Rhs>>>::default();
-        <F as MvSub<Lhs, Rhs>>::sub(&mut out, &self.0, &rhs.0);
-        Mvect(out)
+    type Output = Mvect<Union<LBS, RBS>, M, F>;
+    fn sub(self, rhs: &Mvect<RBS, M, F>) -> Self::Output {
+        let mut out = Self::Output::default();
+        MvSub::do_collect::<LBS, RBS>(&mut out.0, &self.0, &rhs.0);
+        out
     }
 }
 impl<
-        Lhs: TypeArray + Len<Output: ArrayLength> + UnionMerge<Rhs, Output: Len<Output: ArrayLength>>,
-        Rhs: TypeArray + Len<Output: ArrayLength>,
-        F: Field + MvSub<Lhs, Rhs>,
-    > Sub<Mvect<Rhs, F>> for Mvect<Lhs, F>
-where
-    Mvect<Lhs, F>: MvectInfo,
-    Mvect<Rhs, F>: MvectInfo,
+        LBS: BasisSet<M>
+            + Len<Output: ArrayLength>
+            + UnionMerge<RBS, Output: BasisSet<M> + Len<Output: ArrayLength>>,
+        RBS: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric,
+        F: Field + for<'a> CollectInto<F, MvSub, &'a mut [F], LBS, RBS>,
+    > Sub<Mvect<RBS, M, F>> for Mvect<LBS, M, F>
 {
-    type Output = Mvect<Union<Lhs, Rhs>, F>;
-    #[inline(always)]
-    fn sub(self, rhs: Mvect<Rhs, F>) -> Self::Output {
+    type Output = Mvect<Union<LBS, RBS>, M, F>;
+    fn sub(self, rhs: Mvect<RBS, M, F>) -> Self::Output {
         &self - &rhs
     }
 }
 
-// --------------------------------------------
-// multivector multiplication - this one is a bit more complex, but concept
-// of having Mul handle the Type-level setup and call the MvMul impl
-pub trait MvMul<C: TypeArray, L: TypeArray, R: TypeArray>
-where
-    Self: Field,
-{
-    fn mul(out: &mut [Self], lhs: &[Self], rhs: &[Self]);
-}
-// 0 * 0 = 0 - noop
-impl<F: Field, C: TypeArray> MvMul<C, ATerm, ATerm> for F {
-    #[inline(always)]
-    fn mul(_out: &mut [F], _lhs: &[F], _rhs: &[F]) {
-        #[cfg(feature = "assert-invariants")]
-        {
-            assert_eq!(_out.len(), 0);
-            assert_eq!(_lhs.len(), 0);
-            assert_eq!(_rhs.len(), 0);
+// // --------------------------------------------
+// // multivector multiplication
+struct MvMul;
+impl<F: Field> CartXorCollector<F, &mut [F]> for MvMul {
+    fn collect_both<'a>(out: &'a mut F, parity: bool, left: &F, right: &F) {
+        if parity {
+            *out -= left.clone() * right.clone();
+        } else {
+            *out += left.clone() * right.clone();
         }
     }
 }
-// 0 * B = 0 - noop
-impl<F: Field, C: TypeArray, R: Unsigned, B: TypeArray> MvMul<C, ATerm, TArr<R, B>> for F {
-    #[inline(always)]
-    fn mul(_out: &mut [F], _lhs: &[F], _rhs: &[F]) {
-        #[cfg(feature = "assert-invariants")]
-        {
-            assert_eq!(_lhs.len(), 0);
-            assert_eq!(_rhs.len(), Length::<B>::USIZE + 1);
-        }
-    }
-}
-// A * 0 = 0 - noop
-impl<F: Field, C: TypeArray, L: Unsigned, A: TypeArray> MvMul<C, TArr<L, A>, ATerm> for F {
-    #[inline(always)]
-    fn mul(_out: &mut [F], _lhs: &[F], _rhs: &[F]) {
-        #[cfg(feature = "assert-invariants")]
-        {
-            assert_eq!(_lhs.len(), Length::<A>::USIZE + 1);
-            assert_eq!(_rhs.len(), 0);
-        }
-    }
-}
-// A * B = AB
-/// inner loop of product - multiple the single element of lhs by each element of rhs
-pub trait MvMulInner<C: TypeArray, L: BasisInfo, B: TypeArray>
-where
-    Self: Field,
-{
-    fn mul_inner(out: &mut [Self], lhs: &Self, rhs: &[Self]);
-}
-impl<F: Field, C: TypeArray, L: BasisInfo> MvMulInner<C, L, ATerm> for F {
-    #[inline(always)]
-    fn mul_inner(_out: &mut [Self], _lhs: &Self, _rhs: &[Self]) {
-        #[cfg(feature = "assert-invariants")]
-        {
-            assert!(_rhs.len() == 0);
-        }
-    }
-}
-type BProd<L, R> = <L as BasisCart<R>>::Mul;
-impl<
-        F: Field + MvMulInner<C, L, B>,
-        C: TypeArray + IndexOf<BProd<L, R>>,
-        L: BasisInfo + BasisCart<R>,
-        R: BasisInfo,
-        B: TypeArray,
-    > MvMulInner<C, L, TArr<R, B>> for F
-where
-    BProd<L, R>: BasisInfo + IsEqual<ZeroVector>,
-{
-    #[inline(always)]
-    fn mul_inner(out: &mut [Self], lhs: &Self, rhs: &[Self]) {
-        if !Eq::<BProd<L, R>, ZeroVector>::BOOL {
-            // TODO: Need to search for unsigned version
-            #[cfg(feature = "assert-invariants")]
-            {
-                assert!(Contains::<C, BProd<L, R>>::BOOL);
-            }
-            let i = IdxOf::<C, BProd<L, R>>::USIZE;
-            if <BProd<L, R> as BasisInfo>::Sign::BOOL {
-                out[i] -= lhs.clone() * rhs[0].clone()
-            } else {
-                out[i] += lhs.clone() * rhs[0].clone()
-            }
-        }
-        <F as MvMulInner<C, L, B>>::mul_inner(out, lhs, &rhs[1..]);
-    }
-}
-// outer loop of product - call the inner loop for each element of lhs
-impl<
-        F: Field + MvMulInner<C, L, TArr<R, B>>,
-        C: TypeArray,
-        L: BasisInfo,
-        A: TypeArray,
-        R: BasisInfo,
-        B: TypeArray,
-    > MvMul<C, TArr<L, A>, TArr<R, B>> for F
-where
-    for<'a> F: MvMul<C, A, B>,
-    for<'a> F: MvMul<C, TArr<L, A>, B>,
-    for<'a> F: MvMul<C, A, TArr<R, B>>,
-{
-    #[inline(always)]
-    fn mul(out: &mut [F], lhs: &[F], rhs: &[F]) {
-        #[cfg(feature = "assert-invariants")]
-        {
-            assert_eq!(lhs.len(), Length::<A>::USIZE + 1);
-            assert_eq!(rhs.len(), Length::<B>::USIZE + 1);
-        }
-        <F as MvMulInner<C, L, TArr<R, B>>>::mul_inner(out, &lhs[0], rhs);
-        <F as MvMul<C, A, TArr<R, B>>>::mul(out, &lhs[1..], rhs);
-    }
-}
+
 // and finally...the Mul impl itself 🎉
 impl<
-        A: TypeArray
-            + Len<Output: ArrayLength>
-            + MulBs<B, Output: PositiveBs<Output: TypeArray + Len<Output: ArrayLength>>>,
-        B: TypeArray + Len<Output: ArrayLength>,
-        F: Field + MvMul<<<A as MulBs<B>>::Output as PositiveBs>::Output, A, B>,
-    > Mul<&Mvect<B, F>> for &Mvect<A, F>
+        A: BasisSet<M> + Len<Output: ArrayLength>,
+        B: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric,
+        F: Field + for<'a> CartXorCollectInto<F, MvMul, &'a mut [F], A, B>,
+    > Mul<&Mvect<B, M, F>> for &Mvect<A, M, F>
 where
-    Mvect<A, F>: MvectInfo,
-    Mvect<B, F>: MvectInfo,
+    Mvect<A, M, F>: SymMul<
+            Mvect<B, M, F>,
+            Output: UnionMerge<<Mvect<A, M, F> as ASymMul<Mvect<B, M, F>>>::Output>,
+        > + ASymMul<Mvect<B, M, F>>,
+    Union<
+        <Mvect<A, M, F> as SymMul<Mvect<B, M, F>>>::Output,
+        <Mvect<A, M, F> as ASymMul<Mvect<B, M, F>>>::Output,
+    >: BasisSet<M> + Len<Output: ArrayLength>,
 {
-    type Output = Mvect<<<A as MulBs<B>>::Output as PositiveBs>::Output, F>;
-    fn mul(self, rhs: &Mvect<B, F>) -> Self::Output {
-        let mut out = GenericArray::<F, Length<Self::Output>>::default();
-        <F as MvMul<<<A as MulBs<B>>::Output as PositiveBs>::Output, A, B>>::mul(
-            &mut out, &self.0, &rhs.0,
-        );
-        Mvect(out)
+    type Output = Mvect<
+        Union<
+            <Mvect<A, M, F> as SymMul<Mvect<B, M, F>>>::Output,
+            <Mvect<A, M, F> as ASymMul<Mvect<B, M, F>>>::Output,
+        >,
+        M,
+        F,
+    >;
+    fn mul(self, rhs: &Mvect<B, M, F>) -> Self::Output {
+        // TODO: need to handle negative metrics and zeros
+        let mut out = Self::Output::default();
+        MvMul::do_collect::<A, B>(&mut out.0, &self.0, &rhs.0);
+        out
     }
 }
 
-// --------------------------------------------
-// these 3 traits do the work of setting up the Type-level info for Mul
-// MulBs = [l*r for r in B for l in A].sort().uniq()
-// MulBsInner is the inner loop of MulBs
-// PositiveBs = abs(bs).remove(ZeroVector) -- used to create the Type-level info for the output Mvect in Mul
-pub trait MulBs<Rhs> {
+pub trait SymMul<Rhs> {
     type Output;
 }
-pub trait MulBsInner<Rhs> {
-    type Output;
-}
-pub trait PositiveBs {
-    type Output;
-}
-
-// PositiveBs - make all bs positive, flip sign on negs and drop zeros
-impl<U: Unsigned + Len, M: Metric, Bs: PositiveBs> PositiveBs for TArr<Basis<U, M, B0>, Bs>
-where
-    Basis<U, M, B0>: BasisInfo,
+// EMPTY LHS
+impl<RBS: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> SymMul<Mvect<RBS, M, F>>
+    for Mvect<ATerm, M, F>
 {
-    // lookin' good!
-    type Output = TArr<Basis<U, M, B0>, Bs>;
-}
-impl<Bs: Unsigned + Len, M: Metric, A: PositiveBs> PositiveBs for TArr<Basis<Bs, M, B1>, A>
-where
-    Basis<Bs, M, B0>: BasisInfo,
-    Basis<Bs, M, B1>: BasisInfo,
-{
-    // stay positive!
-    type Output = TArr<Basis<Bs, M, B0>, A>;
-}
-impl<Bs: PositiveBs> PositiveBs for TArr<ZeroVector, Bs> {
-    // and don't take no bs!
-    type Output = Bs;
-}
-
-// MulBs - [[l*r for r in B] for l in A]
-impl<L: BasisInfo, R: BasisInfo, A: TypeArray, B: TypeArray + Len<Output: ArrayLength>>
-    MulBs<TArr<R, B>> for TArr<L, A>
-where
-    TArr<L, A>: MulBsInner<R, Output: UnionMerge<<TArr<L, A> as MulBs<B>>::Output>> + MulBs<B>,
-    TArr<R, B>: TypeArray,
-{
-    type Output = Union<
-        // inner(l, B) -> l * r for l in A
-        <TArr<L, A> as MulBsInner<R>>::Output,
-        // for r in B
-        <TArr<L, A> as MulBs<B>>::Output,
-    >;
-}
-impl<B: TypeArray> MulBs<B> for ATerm {
-    // []
     type Output = ATerm;
 }
-impl<L: BasisInfo, A: TypeArray> MulBs<ATerm> for TArr<L, A> {
-    // []
-    type Output = ATerm;
-}
-
-// MulBsInner - [l*r for l in A]
+// SINGLE ELEMENT LHS
 impl<
-        L: BasisInfo + BasisCart<R>,
-        R: BasisInfo,
-        A: TypeArray
-            + Len<Output: ArrayLength>
-            + MulBsInner<R, Output: UnionMerge<tarr![BProd<L, R>]>>,
-    > MulBsInner<R> for TArr<L, A>
+        L: Unsigned
+            + CountOf<B1>
+            + Add<B1>
+            + BitAnd<And<R, M::ZeroMask>>
+            + BitXor<R, Output: CountOf<B1>>
+            + SymMul<B, Output: UnionMerge<tarr![tarr![Xor<L, R>, L, R]]>>,
+        R: Unsigned + CountOf<B1> + Add<B1> + BitAnd<M::ZeroMask>,
+        B: Len<Output: ArrayLength + Add<B1, Output: ArrayLength>>,
+        M: Metric,
+        F: Field,
+    > SymMul<Mvect<TArr<R, B>, M, F>> for Mvect<tarr![L], M, F>
+where
+    TArr<R, B>: BasisSet<M>,
+    tarr![L]: BasisSet<M>,
+    U0: IsNotEqual<And<L, And<R, M::ZeroMask>>>,
+    Count<Xor<L, R>, B1>: At<U1>,
+    NotEq<U0, And<L, And<R, M::ZeroMask>>>: BitOr<Get<Count<Xor<L, R>, B1>, U1>>,
+    Or<NotEq<U0, And<L, And<R, M::ZeroMask>>>, Get<Count<Xor<L, R>, B1>, U1>>: Branch<
+        <L as SymMul<B>>::Output,
+        Union<<L as SymMul<B>>::Output, tarr![tarr![Xor<L, R>, L, R]]>,
+    >,
 {
-    // [l*r for l in A]
-    type Output = Union<
-        // for l in A
-        <A as MulBsInner<R>>::Output,
-        // l * r
-        tarr![BProd<L, R>],
+    // if !zero and isReverse, then include
+    type Output = If<
+        Or<NotEq<U0, And<L, And<R, M::ZeroMask>>>, Get<Count<Xor<L, R>, B1>, U1>>,
+        <L as SymMul<B>>::Output,
+        Union<<L as SymMul<B>>::Output, tarr![tarr![Xor<L, R>, L, R]]>,
     >;
 }
-impl<B: BasisInfo> MulBsInner<B> for ATerm {
-    // []
+// MULTI ELEMENT LHS
+impl<
+        L0: Unsigned,
+        L1: Unsigned,
+        A: BasisSet<M> + Len<Output: ArrayLength + Add<B1, Output: Add<B1, Output: ArrayLength>>>,
+        B: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
+        M: Metric,
+        F: Field,
+    > SymMul<Mvect<B, M, F>> for Mvect<TArr<L0, TArr<L1, A>>, M, F>
+where
+    TArr<L0, TArr<L1, A>>: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
+    TArr<L1, A>: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
+    tarr![L0]: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
+    Mvect<tarr![L0], M, F>:
+        SymMul<B, Output: UnionMerge<<Mvect<TArr<L1, A>, M, F> as SymMul<B>>::Output>>,
+    Mvect<TArr<L1, A>, M, F>: SymMul<B>,
+{
+    type Output = Union<
+        <Mvect<tarr![L0], M, F> as SymMul<B>>::Output,
+        <Mvect<TArr<L1, A>, M, F> as SymMul<B>>::Output,
+    >;
+}
+
+// --------------------------------------------
+// asym multivector multiplication
+pub trait ASymMul<Rhs> {
+    type Output;
+}
+// EMPTY LHS
+impl<RBS: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> ASymMul<Mvect<RBS, M, F>>
+    for Mvect<ATerm, M, F>
+{
     type Output = ATerm;
+}
+// SINGLE ELEMENT LHS
+impl<
+        L: Unsigned
+            + CountOf<B1>
+            + Add<B1>
+            + BitAnd<And<R, M::ZeroMask>>
+            + BitXor<R, Output: CountOf<B1>>
+            + ASymMul<B, Output: UnionMerge<tarr![tarr![Xor<L, R>, L, R]]>>,
+        R: Unsigned + CountOf<B1> + Add<B1> + BitAnd<M::ZeroMask>,
+        B: Len<Output: ArrayLength + Add<B1, Output: ArrayLength>>,
+        M: Metric,
+        F: Field,
+    > ASymMul<Mvect<TArr<R, B>, M, F>> for Mvect<tarr![L], M, F>
+where
+    TArr<R, B>: BasisSet<M>,
+    tarr![L]: BasisSet<M>,
+    U0: IsEqual<And<L, And<R, M::ZeroMask>>>,
+    Count<Xor<L, R>, B1>: At<U1>,
+    Eq<U0, And<L, And<R, M::ZeroMask>>>: BitOr<Get<Count<Xor<L, R>, B1>, U1>>,
+    Or<Eq<U0, And<L, And<R, M::ZeroMask>>>, Get<Count<Xor<L, R>, B1>, U1>>: Branch<
+        Union<<L as ASymMul<B>>::Output, tarr![tarr![Xor<L, R>, L, R]]>,
+        <L as ASymMul<B>>::Output,
+    >,
+{
+    // if !zero and !isReverse, then include
+    type Output = If<
+        Or<Eq<U0, And<L, And<R, M::ZeroMask>>>, Get<Count<Xor<L, R>, B1>, U1>>,
+        Union<<L as ASymMul<B>>::Output, tarr![tarr![Xor<L, R>, L, R]]>,
+        <L as ASymMul<B>>::Output,
+    >;
+}
+// MULTI ELEMENT LHS
+impl<
+        L0: Unsigned,
+        L1: Unsigned,
+        A: BasisSet<M> + Len<Output: ArrayLength + Add<B1, Output: Add<B1, Output: ArrayLength>>>,
+        B: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
+        M: Metric,
+        F: Field,
+    > ASymMul<Mvect<B, M, F>> for Mvect<TArr<L0, TArr<L1, A>>, M, F>
+where
+    TArr<L0, TArr<L1, A>>: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
+    TArr<L1, A>: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
+    tarr![L0]: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
+    Mvect<tarr![L0], M, F>:
+        ASymMul<B, Output: UnionMerge<<Mvect<TArr<L1, A>, M, F> as ASymMul<B>>::Output>>,
+    Mvect<TArr<L1, A>, M, F>: ASymMul<B>,
+{
+    type Output = Union<
+        <Mvect<tarr![L0], M, F> as ASymMul<B>>::Output,
+        <Mvect<TArr<L1, A>, M, F> as ASymMul<B>>::Output,
+    >;
+}
+
+// tests
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use typenum::{tarr, B0, B1, P1, U0, U1, U2, U3, U4, U5, U6, U7, Z0};
+
+    type Metric = tarr![Z0, P1, P1];
+    type Pga2d<U> = Basis<U, Metric, B0>;
+
+    type Scalar = Pga2d<U0>;
+    type E0 = Pga2d<U1>;
+    type E1 = Pga2d<U2>;
+    type E01 = Pga2d<U3>;
+    type E2 = Pga2d<U4>;
+    type E02 = Pga2d<U5>;
+    type E12 = Pga2d<U6>;
+    type E012 = Pga2d<U7>;
+
+    #[test]
+    fn test_default() {
+        type M = tarr![Z0, P1, P1];
+        type BS = <tarr![U0, U1, U2, U4] as BasisSet<M>>::Output;
+        let mv = Mvect::<BS, M, f32>::default();
+        assert_eq!(mv.len(), 4);
+        for &elem in mv.0.iter() {
+            assert_eq!(elem, 0.0);
+        }
+    }
+
+    #[test]
+    fn test_into_mv() {
+        let expected = Mvect::<tarr![U3], Metric, f32>::new(GenericArray::<f32, U1>::from([1.0]));
+        let actual = <E01 as IntoMv<f32>>::into_mv();
+        assert!(expected == actual);
+    }
+
+    #[test]
+    fn test_eq() {
+        let mv0 = <E01 as IntoMv<f32>>::into_mv();
+        let mv1 = <E01 as IntoMv<f32>>::into_mv();
+        assert!(mv0 == mv1);
+        // TODO: test zeros vs not stored vals
+    }
+
+    #[test]
+    fn test_add() {
+        let e = <Scalar as IntoMv<f32>>::into_mv();
+        let e0 = <E0 as IntoMv<f32>>::into_mv();
+
+        let c = e + e0;
+    }
+
+    #[test]
+    fn test_mul() {
+        let e = <Scalar as IntoMv<f32>>::into_mv();
+        let e0 = <E0 as IntoMv<f32>>::into_mv();
+
+        // let c = &e * &e0;
+    }
 }

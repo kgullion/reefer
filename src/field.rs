@@ -1,6 +1,6 @@
 use num_traits::{NumAssignOps, Signed};
 
-pub trait Field: Signed + NumAssignOps + Default + Clone {}
+pub trait Field: Signed + NumAssignOps + Default + Clone + Sized {}
 impl Field for f32 {} // TODO: implement for i32, f64, etc.
 
 // /// handy when a faster way to negate is available
