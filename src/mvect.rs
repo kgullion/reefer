@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 use crate::{
     basis::{BNew, BProd, Basis, BasisCart, BasisInfo, IntoBasis, ZeroVector},
-    collector::{CartXorCollectInto, CartXorCollector, CollectInto, Collector},
+    collector::{CartCollector, CollectInto, Collector},
     field::Field,
     metric::{IntFromSwapParityWithOverlaps, Metric},
     utils::{
@@ -13,8 +13,8 @@ use core::marker::PhantomData;
 use core::ops::{Add, BitAnd, BitOr, BitXor, Mul, Not, Sub};
 use generic_array::{ArrayLength, GenericArray};
 use typenum::{
-    tarr, ATerm, Abs, Add1, And, Bit, Eq, IsEqual, IsNotEqual, Len, Length, NotEq, Or, Sum, TArr,
-    TypeArray, Unsigned, Xor, B0, B1, U0, U1,
+    tarr, ATerm, Abs, Add1, And, Bit, Eq, IsEqual, IsNotEqual, Len, Length, NotEq, Or, Prod, Sum,
+    TArr, TypeArray, Unsigned, Xor, B0, B1, U0, U1,
 };
 
 /// multivector
@@ -38,7 +38,6 @@ where
 {
     type Output = TArr<U, BS>;
 }
-
 impl<BS: BasisSet<M> + Len<Output: Unsigned + ArrayLength>, M: Metric, F: Field> Mvect<BS, M, F> {
     /// Create a new multivector from a GenericArray of field elements.
     #[inline(always)]
@@ -51,7 +50,32 @@ impl<BS: BasisSet<M> + Len<Output: Unsigned + ArrayLength>, M: Metric, F: Field>
         self.0.len()
     }
 }
+pub trait IntoBasisSet {
+    type Output;
+}
+impl IntoBasisSet for ZeroVector {
+    type Output = tarr![];
+}
+impl<U: Unsigned + CountOf<B1> + Add<B1>, M: Metric, S: Bit> IntoBasisSet for Basis<U, M, S>
+where
+    Basis<U, M, S>: BasisInfo,
+{
+    type Output = tarr![U];
+}
 
+// --------------------------------------------
+trait MvInfo {
+    type BasisSet: BasisSet<Self::Metric>;
+    type Field: Field;
+    type Metric: Metric;
+}
+impl<BS: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> MvInfo for Mvect<BS, M, F> {
+    type BasisSet = BS;
+    type Field = F;
+    type Metric = M;
+}
+
+// --------------------------------------------
 // Default - create a new multivector with all elements set to zero
 impl<BS: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> core::default::Default
     for Mvect<BS, M, F>
@@ -64,7 +88,7 @@ impl<BS: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> core::defa
         Mvect(GenericArray::<F, Length<BS>>::default(), PhantomData)
     }
 }
-
+// --------------------------------------------
 // IntoMv - convert a Basis or ZeroVector type into a Mvect instance
 pub trait IntoMv<F: Field> {
     type Output;
@@ -86,9 +110,10 @@ where
         out
     }
 }
-
+// --------------------------------------------
 // PartialEq - compare two multivectors
 struct MvPartialEq;
+// Collect the results of comparing two multivectors
 impl<'a, F: Field> Collector<F, bool> for MvPartialEq {
     fn collect_both(out: bool, left: &F, right: &F) -> bool {
         out && left == right
@@ -100,13 +125,7 @@ impl<'a, F: Field> Collector<F, bool> for MvPartialEq {
         out && &F::zero() == right
     }
 }
-impl<
-        BS: BasisSet<M> + Len<Output: ArrayLength>,
-        M: Metric,
-        F: core::cmp::Eq + Field + CollectInto<F, MvPartialEq, bool, BS, BS>,
-    > core::cmp::Eq for Mvect<BS, M, F>
-{
-}
+// PartialEq
 impl<
         BS: BasisSet<M> + Len<Output: ArrayLength>,
         RBS: BasisSet<M> + Len<Output: ArrayLength>,
@@ -118,9 +137,18 @@ impl<
         MvPartialEq::do_collect::<BS, RBS>(true, &self.0, &other.0)
     }
 }
-
-// Add - add two multivectors
+// Implement Total Eq for Fields that support it
+impl<
+        BS: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric,
+        F: core::cmp::Eq + Field + CollectInto<F, MvPartialEq, bool, BS, BS>,
+    > core::cmp::Eq for Mvect<BS, M, F>
+{
+}
+// --------------------------------------------
+// MvAdd - add two multivectors
 struct MvAdd;
+// Collect the results of adding two multivectors
 impl<F: Field> Collector<F, &mut [F]> for MvAdd {
     fn collect_both<'a>(out: &'a mut [F], left: &F, right: &F) -> &'a mut [F] {
         out[0] += left.clone();
@@ -136,6 +164,7 @@ impl<F: Field> Collector<F, &mut [F]> for MvAdd {
         &mut out[1..]
     }
 }
+// &mv + &mv
 impl<
         LBS: BasisSet<M>
             + Len<Output: ArrayLength>
@@ -152,6 +181,7 @@ impl<
         out
     }
 }
+// mv + mv
 impl<
         LBS: BasisSet<M>
             + Len<Output: ArrayLength>
@@ -166,9 +196,10 @@ impl<
         &self + &rhs
     }
 }
-
+// --------------------------------------------
 // Sub - subtract two multivectors
 struct MvSub;
+// Collect the results of subtracting two multivectors
 impl<F: Field> Collector<F, &mut [F]> for MvSub {
     fn collect_both<'a>(out: &'a mut [F], left: &F, right: &F) -> &'a mut [F] {
         out[0] -= left.clone();
@@ -214,179 +245,121 @@ impl<
         &self - &rhs
     }
 }
-
-// // --------------------------------------------
-// // multivector multiplication
-struct MvMul;
-impl<F: Field> CartXorCollector<F, &mut [F]> for MvMul {
-    fn collect_both<'a>(out: &'a mut F, parity: bool, left: &F, right: &F) {
-        if parity {
-            *out -= left.clone() * right.clone();
-        } else {
-            *out += left.clone() * right.clone();
-        }
+// --------------------------------------------
+// multivector multiplication
+// ----
+// MvMul - does the runtime work
+pub trait MvMul<F, OUT, A: BasisSet<Self>, B: BasisSet<Self>>: Metric + Sized {
+    fn mv_mul(out: &mut [F], left: &[F], right: &[F]);
+}
+impl<B: BasisSet<M>, OUT: BasisSet<M>, M: Metric, F: Field> MvMul<F, OUT, tarr![], B> for M {
+    fn mv_mul(_out: &mut [F], _left: &[F], _right: &[F]) {}
+}
+impl<
+        L: Unsigned,
+        A: BasisSet<M> + Len<Output: ArrayLength>,
+        B: BasisSet<M> + Len<Output: ArrayLength>,
+        OUT: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric + MvMulInner<F, OUT, L, B> + MvMul<F, OUT, A, B>,
+        F: Field,
+    > MvMul<F, OUT, TArr<L, A>, B> for M
+where
+    TArr<L, A>: BasisSet<M>,
+{
+    fn mv_mul(out: &mut [F], left: &[F], right: &[F]) {
+        <M as MvMulInner<F, OUT, L, B>>::mv_mul_inner(out, &left[0], right);
+        <M as MvMul<F, OUT, A, B>>::mv_mul(out, &left[1..], right);
     }
 }
-
-// and finally...the Mul impl itself 🎉
+// MvMulInner
+pub trait MvMulInner<F, OUT, L, B>: Metric {
+    fn mv_mul_inner(out: &mut [F], left: &F, right: &[F]);
+}
+impl<L: Unsigned, OUT: BasisSet<M>, M: Metric, F: Field> MvMulInner<F, OUT, L, tarr![]> for M {
+    fn mv_mul_inner(_out: &mut [F], _left: &F, _right: &[F]) {}
+}
+impl<
+        L: Unsigned,
+        R: Unsigned,
+        B: BasisSet<M> + Len<Output: ArrayLength>,
+        OUT: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric + MvMulInner<F, OUT, L, B>,
+        F: Field,
+    > MvMulInner<F, OUT, L, TArr<R, B>> for M
+where
+    Basis<L, M, B0>: BasisInfo + Mul<Basis<R, M, B0>, Output: CartCollector<F, OUT>>,
+    Basis<R, M, B0>: BasisInfo,
+{
+    fn mv_mul_inner(out: &mut [F], left: &F, right: &[F]) {
+        <Prod<Basis<L, M, B0>, Basis<R, M, B0>> as CartCollector<F, OUT>>::collect(
+            out, left, &right[0],
+        );
+        <M as MvMulInner<F, OUT, L, B>>::mv_mul_inner(out, left, &right[1..]);
+    }
+}
+// ----
+// ProdType - does the comptime work
+pub trait ProdType<A: BasisSet<Self>, B: BasisSet<Self>>: Metric + Sized {
+    type Output: BasisSet<Self>;
+}
+// 0 * B = 0
+impl<B: BasisSet<M>, M: Metric> ProdType<tarr![], B> for M {
+    type Output = tarr![];
+}
+// [L|A] * B = A*B + L*B
+impl<
+        L: Unsigned,
+        A: BasisSet<M> + Len<Output: ArrayLength>,
+        B: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric + ProdType<A, B> + ProdTypeInner<L, B>,
+    > ProdType<TArr<L, A>, B> for M
+where
+    TArr<L, A>: BasisSet<M>,
+    <M as ProdType<A, B>>::Output:
+        UnionMerge<<M as ProdTypeInner<L, B>>::Output, Output: BasisSet<M>>,
+    <M as ProdTypeInner<L, B>>::Output: BasisSet<M>,
+{
+    type Output = Union<<M as ProdType<A, B>>::Output, <M as ProdTypeInner<L, B>>::Output>;
+}
+/// ProdTypeInner - does the compile-time type work
+pub trait ProdTypeInner<L: Unsigned, B: TypeArray> {
+    type Output: TypeArray;
+}
+// L*0 = 0
+impl<L: Unsigned, M: Metric> ProdTypeInner<L, tarr![]> for M {
+    type Output = tarr![];
+}
+// L*[R|B] = L*R + L*B
+impl<L: Unsigned, R: Unsigned, B: BasisSet<M>, M: Metric + ProdTypeInner<L, B>>
+    ProdTypeInner<L, TArr<R, B>> for M
+where
+    Basis<L, M, B0>: BasisInfo + Mul<Basis<R, M, B0>, Output: IntoBasisSet<Output: BasisSet<M>>>,
+    Basis<R, M, B0>: BasisInfo,
+    <Prod<Basis<L, M, B0>, Basis<R, M, B0>> as IntoBasisSet>::Output:
+        UnionMerge<<M as ProdTypeInner<L, B>>::Output>,
+{
+    type Output = Union<
+        <Prod<Basis<L, M, B0>, Basis<R, M, B0>> as IntoBasisSet>::Output,
+        <M as ProdTypeInner<L, B>>::Output,
+    >;
+}
+// ----
+// Mul - multiply two multivectors 🎉
 impl<
         A: BasisSet<M> + Len<Output: ArrayLength>,
         B: BasisSet<M> + Len<Output: ArrayLength>,
-        M: Metric,
-        F: Field + for<'a> CartXorCollectInto<F, MvMul, &'a mut [F], A, B>,
-    > Mul<&Mvect<B, M, F>> for &Mvect<A, M, F>
-where
-    Mvect<A, M, F>: SymMul<
-            Mvect<B, M, F>,
-            Output: UnionMerge<<Mvect<A, M, F> as ASymMul<Mvect<B, M, F>>>::Output>,
-        > + ASymMul<Mvect<B, M, F>>,
-    Union<
-        <Mvect<A, M, F> as SymMul<Mvect<B, M, F>>>::Output,
-        <Mvect<A, M, F> as ASymMul<Mvect<B, M, F>>>::Output,
-    >: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric
+            + ProdType<A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
+            + MvMul<F, <M as ProdType<A, B>>::Output, A, B>,
+        F: Field,
+    > core::ops::Mul<Mvect<B, M, F>> for Mvect<A, M, F>
 {
-    type Output = Mvect<
-        Union<
-            <Mvect<A, M, F> as SymMul<Mvect<B, M, F>>>::Output,
-            <Mvect<A, M, F> as ASymMul<Mvect<B, M, F>>>::Output,
-        >,
-        M,
-        F,
-    >;
-    fn mul(self, rhs: &Mvect<B, M, F>) -> Self::Output {
-        // TODO: need to handle negative metrics and zeros
+    type Output = Mvect<<M as ProdType<A, B>>::Output, M, F>;
+    fn mul(self, rhs: Mvect<B, M, F>) -> Self::Output {
         let mut out = Self::Output::default();
-        MvMul::do_collect::<A, B>(&mut out.0, &self.0, &rhs.0);
+        <M as MvMul<F, <M as ProdType<A, B>>::Output, A, B>>::mv_mul(&mut out.0, &self.0, &rhs.0);
         out
     }
-}
-
-pub trait SymMul<Rhs> {
-    type Output;
-}
-// EMPTY LHS
-impl<RBS: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> SymMul<Mvect<RBS, M, F>>
-    for Mvect<ATerm, M, F>
-{
-    type Output = ATerm;
-}
-// SINGLE ELEMENT LHS
-impl<
-        L: Unsigned
-            + CountOf<B1>
-            + Add<B1>
-            + BitAnd<And<R, M::ZeroMask>>
-            + BitXor<R, Output: CountOf<B1>>
-            + SymMul<B, Output: UnionMerge<tarr![tarr![Xor<L, R>, L, R]]>>,
-        R: Unsigned + CountOf<B1> + Add<B1> + BitAnd<M::ZeroMask>,
-        B: Len<Output: ArrayLength + Add<B1, Output: ArrayLength>>,
-        M: Metric,
-        F: Field,
-    > SymMul<Mvect<TArr<R, B>, M, F>> for Mvect<tarr![L], M, F>
-where
-    TArr<R, B>: BasisSet<M>,
-    tarr![L]: BasisSet<M>,
-    U0: IsNotEqual<And<L, And<R, M::ZeroMask>>>,
-    Count<Xor<L, R>, B1>: At<U1>,
-    NotEq<U0, And<L, And<R, M::ZeroMask>>>: BitOr<Get<Count<Xor<L, R>, B1>, U1>>,
-    Or<NotEq<U0, And<L, And<R, M::ZeroMask>>>, Get<Count<Xor<L, R>, B1>, U1>>: Branch<
-        <L as SymMul<B>>::Output,
-        Union<<L as SymMul<B>>::Output, tarr![tarr![Xor<L, R>, L, R]]>,
-    >,
-{
-    // if !zero and isReverse, then include
-    type Output = If<
-        Or<NotEq<U0, And<L, And<R, M::ZeroMask>>>, Get<Count<Xor<L, R>, B1>, U1>>,
-        <L as SymMul<B>>::Output,
-        Union<<L as SymMul<B>>::Output, tarr![tarr![Xor<L, R>, L, R]]>,
-    >;
-}
-// MULTI ELEMENT LHS
-impl<
-        L0: Unsigned,
-        L1: Unsigned,
-        A: BasisSet<M> + Len<Output: ArrayLength + Add<B1, Output: Add<B1, Output: ArrayLength>>>,
-        B: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
-        M: Metric,
-        F: Field,
-    > SymMul<Mvect<B, M, F>> for Mvect<TArr<L0, TArr<L1, A>>, M, F>
-where
-    TArr<L0, TArr<L1, A>>: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
-    TArr<L1, A>: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
-    tarr![L0]: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
-    Mvect<tarr![L0], M, F>:
-        SymMul<B, Output: UnionMerge<<Mvect<TArr<L1, A>, M, F> as SymMul<B>>::Output>>,
-    Mvect<TArr<L1, A>, M, F>: SymMul<B>,
-{
-    type Output = Union<
-        <Mvect<tarr![L0], M, F> as SymMul<B>>::Output,
-        <Mvect<TArr<L1, A>, M, F> as SymMul<B>>::Output,
-    >;
-}
-
-// --------------------------------------------
-// asym multivector multiplication
-pub trait ASymMul<Rhs> {
-    type Output;
-}
-// EMPTY LHS
-impl<RBS: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> ASymMul<Mvect<RBS, M, F>>
-    for Mvect<ATerm, M, F>
-{
-    type Output = ATerm;
-}
-// SINGLE ELEMENT LHS
-impl<
-        L: Unsigned
-            + CountOf<B1>
-            + Add<B1>
-            + BitAnd<And<R, M::ZeroMask>>
-            + BitXor<R, Output: CountOf<B1>>
-            + ASymMul<B, Output: UnionMerge<tarr![tarr![Xor<L, R>, L, R]]>>,
-        R: Unsigned + CountOf<B1> + Add<B1> + BitAnd<M::ZeroMask>,
-        B: Len<Output: ArrayLength + Add<B1, Output: ArrayLength>>,
-        M: Metric,
-        F: Field,
-    > ASymMul<Mvect<TArr<R, B>, M, F>> for Mvect<tarr![L], M, F>
-where
-    TArr<R, B>: BasisSet<M>,
-    tarr![L]: BasisSet<M>,
-    U0: IsEqual<And<L, And<R, M::ZeroMask>>>,
-    Count<Xor<L, R>, B1>: At<U1>,
-    Eq<U0, And<L, And<R, M::ZeroMask>>>: BitOr<Get<Count<Xor<L, R>, B1>, U1>>,
-    Or<Eq<U0, And<L, And<R, M::ZeroMask>>>, Get<Count<Xor<L, R>, B1>, U1>>: Branch<
-        Union<<L as ASymMul<B>>::Output, tarr![tarr![Xor<L, R>, L, R]]>,
-        <L as ASymMul<B>>::Output,
-    >,
-{
-    // if !zero and !isReverse, then include
-    type Output = If<
-        Or<Eq<U0, And<L, And<R, M::ZeroMask>>>, Get<Count<Xor<L, R>, B1>, U1>>,
-        Union<<L as ASymMul<B>>::Output, tarr![tarr![Xor<L, R>, L, R]]>,
-        <L as ASymMul<B>>::Output,
-    >;
-}
-// MULTI ELEMENT LHS
-impl<
-        L0: Unsigned,
-        L1: Unsigned,
-        A: BasisSet<M> + Len<Output: ArrayLength + Add<B1, Output: Add<B1, Output: ArrayLength>>>,
-        B: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
-        M: Metric,
-        F: Field,
-    > ASymMul<Mvect<B, M, F>> for Mvect<TArr<L0, TArr<L1, A>>, M, F>
-where
-    TArr<L0, TArr<L1, A>>: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
-    TArr<L1, A>: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
-    tarr![L0]: BasisSet<M> + Len<Output: ArrayLength + Add<B1>>,
-    Mvect<tarr![L0], M, F>:
-        ASymMul<B, Output: UnionMerge<<Mvect<TArr<L1, A>, M, F> as ASymMul<B>>::Output>>,
-    Mvect<TArr<L1, A>, M, F>: ASymMul<B>,
-{
-    type Output = Union<
-        <Mvect<tarr![L0], M, F> as ASymMul<B>>::Output,
-        <Mvect<TArr<L1, A>, M, F> as ASymMul<B>>::Output,
-    >;
 }
 
 // tests
@@ -444,8 +417,8 @@ mod tests {
     #[test]
     fn test_mul() {
         let e = <Scalar as IntoMv<f32>>::into_mv();
-        let e0 = <E0 as IntoMv<f32>>::into_mv();
+        let e1 = <E1 as IntoMv<f32>>::into_mv();
 
-        // let c = &e * &e0;
+        let c = e * e1;
     }
 }

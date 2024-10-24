@@ -1,13 +1,10 @@
 use core::ops::{Add, BitOr, Sub};
 use typenum::{ATerm, Bit, Eq, IsEqual, Or, Sub1, Sum, TArr, UInt, Unsigned, B0, B1, U0};
 
-#[allow(unused)]
 pub type IdxOf<A, V> = <A as IndexOf<V>>::Idx;
-#[allow(unused)]
 pub type Contains<A, V> = <A as IndexOf<V>>::Found;
 pub type Get<A, I> = <A as At<I>>::Output;
-// allows unused type parameters
-#[allow(unused)]
+
 pub trait IndexOf<V> {
     type Idx: Unsigned;
     type Found: Bit;

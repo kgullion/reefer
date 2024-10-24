@@ -33,7 +33,6 @@ use typenum::{And, Bit, UInt, Unsigned, Xor, B0, B1, U0};
 //
 // and finally, encoded into types:
 /// Parity of the symmetric difference of two basis vectors.
-#[allow(unused)]
 pub type SwapParity<L, R> = <L as SwapPar<R, Get<Count<L, B1>, U0>, B0>>::Parity;
 
 pub trait SwapPar<R, LP, TP> {

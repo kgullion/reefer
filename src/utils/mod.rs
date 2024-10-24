@@ -3,7 +3,6 @@ pub mod count;
 pub mod swap_parity;
 pub mod typeset;
 
-#[allow(unused)]
 pub use contains::{At, Contains, Get, IdxOf, IndexOf};
 pub use count::{Count, CountOf};
 pub use swap_parity::{SwapPar, SwapParity};
@@ -23,6 +22,8 @@ impl<T, F> Branch<T, F> for B1 {
 }
 
 // Flatten TypeArray of TypeArrays
+// allow unused
+#[allow(unused)]
 pub type Flat<A> = <A as Flatten>::Output;
 pub trait Flatten {
     type Output: TypeArray;

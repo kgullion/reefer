@@ -1,9 +1,8 @@
-#![allow(unused)]
-use super::{Branch, Flat, Flatten, If};
+use super::{Branch, If};
 use core::ops::{Add, Shr, Sub};
 use typenum::{
-    tarr, ATerm, Add1, Bit, Cmp, Compare, Eq, Equal, Greater, IsEqual, Len, Length, Less, NonZero,
-    Shright, Sub1, TArr, TypeArray, UInt, Unsigned, B0, B1, U0, U1, U2, U3, U4, U5, U6, U7, U8, U9,
+    ATerm, Add1, Bit, Cmp, Compare, Eq, Equal, Greater, IsEqual, Len, Length, Less, Shright, Sub1,
+    TArr, TypeArray, UInt, Unsigned, B0, B1, U0, U1,
 };
 
 // --------------------------------------------
@@ -116,6 +115,7 @@ impl<Lhs: TypeArray + DiffMerge<B>, R, B> DifferenceConverge<Lhs, TArr<R, B>> fo
 }
 
 /// Symmetric Difference of two sorted TypeArrays
+#[allow(unused)]
 pub type SymDiff<A, B> = Union<Diff<A, B>, Diff<B, A>>;
 
 /// Is Disjoint
@@ -189,37 +189,8 @@ impl<Lhs: TypeArray + SubsetMerge<B>, R, B> SubsetConverge<Lhs, TArr<R, B>> for 
 }
 
 // IsSuperset<A, B> = IsSubset<B, A>;
+#[allow(unused)]
 pub type IsSuperset<A, B> = IsSubset<B, A>;
-
-// /// Cartesian Product of two sorted TypeArrays
-// /// A × B = {a*b | a in A, b in B}
-// pub type CartProd<A, B> = <A as CartProdMerge<B>>::Output;
-// pub trait CartProdMerge<Rhs: TypeArray> {
-//     type Output: TypeArray;
-// }
-// impl<Rhs: TypeArray> CartProdMerge<Rhs> for ATerm {
-//     // {} × X = {}
-//     type Output = ATerm;
-// }
-// impl<L: CartProdConverge<Rhs>, A: CartProdMerge<Rhs>, Rhs: TypeArray> CartProdMerge<Rhs>
-//     for TArr<L, A>
-// {
-//     // L × R = {l, r | l in A, r in A}
-//     // TODO: fix this
-//     type Output = Flat<TArr<<L as CartProdConverge<Rhs>>::Output, CartProd<A, Rhs>>>;
-// }
-
-// pub type Pair<A, B> = tarr![A, B];
-// pub trait CartProdConverge<Rhs: TypeArray> {
-//     type Output: TypeArray;
-// }
-// impl<L: CartProdConverge<B>, R, B: TypeArray> CartProdConverge<TArr<R, B>> for L {
-//     // l*r for r in B
-//     type Output = TArr<Pair<L, R>, <L as CartProdConverge<B>>::Output>;
-// }
-// impl<L> CartProdConverge<ATerm> for L {
-//     type Output = ATerm;
-// }
 
 // --------------------------------------------
 // split TypeArray into two TypeArrays

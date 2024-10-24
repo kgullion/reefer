@@ -224,23 +224,23 @@ where
 //     }
 // }
 
-// // Default
-// impl<U: Unsigned, M: Metric, S: Bit> Default for Basis<U, M, S>
-// where
-//     Self: BasisInfo,
-// {
-//     #[inline(always)]
-//     /// Create a new basis element.
-//     fn default() -> Self {
-//         Self(PhantomData)
-//     }
-// }
-// impl Default for ZeroVector {
-//     #[inline(always)]
-//     fn default() -> Self {
-//         Self
-//     }
-// }
+// Default
+impl<U: Unsigned, M: Metric, S: Bit> Default for Basis<U, M, S>
+where
+    Self: BasisInfo,
+{
+    #[inline(always)]
+    /// Create a new basis element.
+    fn default() -> Self {
+        Self(PhantomData)
+    }
+}
+impl Default for ZeroVector {
+    #[inline(always)]
+    fn default() -> Self {
+        Self
+    }
+}
 
 // // Graded
 // pub trait Graded {
@@ -459,16 +459,23 @@ where
 // }
 
 // Mul
-// impl<R: BasisInfo> Mul<R> for ZeroVector
-// where
-//     Self: BasisInfo + BasisCart<R>,
-// {
-//     type Output = <Self as BasisCart<R>>::Mul;
-//     #[inline(always)]
-//     fn mul(self, _: R) -> Self::Output {
-//         Self::Output::default()
-//     }
-// }
+impl<R: BasisInfo> Mul<R> for ZeroVector {
+    type Output = ZeroVector;
+    #[inline(always)]
+    fn mul(self, _: R) -> Self::Output {
+        Self::Output::default()
+    }
+}
+impl<U: Unsigned, M: Metric, S: Bit, R: BasisInfo> Mul<R> for Basis<U, M, S>
+where
+    Self: BasisInfo + BasisCart<R, Mul: Default>,
+{
+    type Output = <Self as BasisCart<R>>::Mul;
+    #[inline(always)]
+    fn mul(self, _: R) -> Self::Output {
+        Self::Output::default()
+    }
+}
 // impl<U: Unsigned, M: Metric, S: Bit, R: BasisInfo> Mul<R> for Basis<U, M, S>
 // where
 //     Self: BasisInfo + BasisCart<R>,
