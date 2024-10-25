@@ -1,7 +1,7 @@
 use crate::{
     basis::Basis,
     metric::Metric,
-    utils::{Count, CountOf},
+    utils::count::{Count, CountOf},
 };
 use typenum::{Bit, Unsigned, B1};
 

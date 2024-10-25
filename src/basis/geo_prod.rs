@@ -2,7 +2,7 @@ use super::{into::IntoBasis, Basis, ZeroVector};
 use crate::{
     metric::{Metric, TritMul, TritXor},
     traits::GeometricProduct,
-    utils::{parity::SwapPar, SwapParity},
+    utils::parity::{SwapPar, SwapParity},
 };
 use core::ops::BitXor;
 use typenum::{Bit, Unsigned, Xor};

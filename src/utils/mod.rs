@@ -3,10 +3,6 @@ pub mod count;
 pub mod parity;
 pub mod typeset;
 
-pub use contains::{At, Contains, Get, IdxOf, IndexOf};
-pub use count::{Count, CountOf};
-pub use parity::{SwapParInner, SwapParity};
-
 use typenum::{ATerm, Bit, TArr, TypeArray, B0, B1};
 
 // If-Then-Else

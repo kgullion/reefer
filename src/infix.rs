@@ -2,7 +2,7 @@ use crate::{
     basis::{Basis, ZeroVector},
     field::Field,
     metric::Metric,
-    mvect::{BasisSet, Mvect},
+    mvect::{basis_set::BasisSet, Mvect},
     traits::GeometricProduct,
 };
 use generic_array::ArrayLength;

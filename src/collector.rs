@@ -2,7 +2,7 @@ use crate::{
     basis::{Basis, ZeroVector},
     field::Field,
     metric::Metric,
-    utils::{Contains, IdxOf, IndexOf},
+    utils::contains::{Contains, IdxOf, IndexOf},
 };
 use typenum::{tarr, Bit, Cmp, Compare, Equal, Greater, Less, TArr, TypeArray, Unsigned, B0, B1};
 
