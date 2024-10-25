@@ -1,12 +1,6 @@
-use super::{Branch, If};
-use core::ops::{Add, Shr, Sub};
-use typenum::{
-    ATerm, Add1, Bit, Cmp, Compare, Eq, Equal, Greater, IsEqual, Len, Length, Less, Shright, Sub1,
-    TArr, TypeArray, UInt, Unsigned, B0, B1, U0, U1,
-};
-
-// --------------------------------------------
-// set operations for sorted TypeArrays
+/// --------------------------------------------
+/// set operations for *sorted* TypeArrays
+use typenum::{ATerm, Bit, Cmp, Compare, Equal, Greater, Less, TArr, TypeArray, B0, B1};
 
 /// Intersection of two sorted TypeArrays
 pub type Intersect<A, B> = <A as IntersectMerge<B>>::Output;
@@ -192,52 +186,65 @@ impl<Lhs: TypeArray + SubsetMerge<B>, R, B> SubsetConverge<Lhs, TArr<R, B>> for 
 #[allow(unused)]
 pub type IsSuperset<A, B> = IsSubset<B, A>;
 
-// --------------------------------------------
-// split TypeArray into two TypeArrays
-type SplitLeft<A, I> = <I as Split<A>>::Left;
-type SplitRight<A, I> = <I as Split<A>>::Right;
-pub trait Split<A: TypeArray> {
-    type Left: TypeArray;
-    type Right: TypeArray;
-}
-impl<I: Unsigned> Split<ATerm> for I {
-    type Left = ATerm;
-    type Right = ATerm;
-}
-impl<V, A: TypeArray, I: Unsigned + Split<A> + Sub<B1> + IsEqual<U0>> Split<TArr<V, A>> for I
-where
-    Sub1<I>: Split<A>,
-    Eq<I, U0>: Branch<ATerm, TArr<V, SplitLeft<A, Sub1<I>>>>,
-    If<Eq<I, U0>, ATerm, TArr<V, SplitLeft<A, Sub1<I>>>>: TypeArray,
-    Eq<I, U0>: Branch<TArr<V, A>, SplitRight<A, Sub1<I>>>,
-    If<Eq<I, U0>, TArr<V, A>, SplitRight<A, Sub1<I>>>: TypeArray,
-{
-    type Left = If<Eq<I, U0>, ATerm, TArr<V, SplitLeft<A, Sub1<I>>>>;
-    type Right = If<Eq<I, U0>, TArr<V, A>, SplitRight<A, Sub1<I>>>;
-}
-
-// --------------------------------------------
-// sort TypeArray - merge sort
-// TODO: does this actually end up better than something more naive? def not O(nlogn) since Len and Idx are O(n) not O(1)
-pub type Sorted<A> = <A as Sort>::Sorted;
-pub trait Sort {
-    type Sorted: TypeArray;
-}
-impl Sort for ATerm {
-    type Sorted = ATerm;
-}
-impl<V, A: Sort + Len + TypeArray> Sort for TArr<V, A>
-where
-    Length<A>: Add<B1>,
-    Add1<Length<A>>: Unsigned + Shr<UInt<U0, B1>>,
-    Shright<Add1<Length<A>>, U1>: Unsigned + Split<TArr<V, A>>,
-    SplitLeft<TArr<V, A>, Shright<Add1<Length<A>>, U1>>: Sort + TypeArray,
-    SplitRight<TArr<V, A>, Shright<Add1<Length<A>>, U1>>: Sort + TypeArray,
-    Sorted<SplitLeft<TArr<V, A>, Shright<Add1<Length<A>>, U1>>>:
-        UnionMerge<Sorted<SplitRight<TArr<V, A>, Shright<Add1<Length<A>>, U1>>>>,
-{
-    type Sorted = Union<
-        Sorted<SplitLeft<TArr<V, A>, Shright<Add1<Length<A>>, U1>>>,
-        Sorted<SplitRight<TArr<V, A>, Shright<Add1<Length<A>>, U1>>>,
-    >;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use typenum::{assert_type_eq, tarr, U0, U1, U2, U3};
+    #[test]
+    fn test_union() {
+        assert_type_eq!(Union::<tarr![], tarr![]>, tarr![]); // {} | {} = {}
+        assert_type_eq!(Union::<tarr![], tarr![U0]>, tarr![U0]); // {} | {0} = {0}
+        assert_type_eq!(Union::<tarr![U0], tarr![]>, tarr![U0]); // {0} | {} = {0}
+        assert_type_eq!(Union::<tarr![U0], tarr![U0]>, tarr![U0]); // {0} | {0} = {0}
+        assert_type_eq!(Union::<tarr![U0], tarr![U1]>, tarr![U0, U1]); // {0} | {1} = {0, 1}
+        assert_type_eq!(Union::<tarr![U1], tarr![U0]>, tarr![U0, U1]); // {1} | {0} = {0, 1}
+        assert_type_eq!(Union::<tarr![U0, U2], tarr![U1, U2]>, tarr![U0, U1, U2]);
+        assert_type_eq!(Union::<tarr![U0, U3], tarr![U1, U2]>, tarr![U0, U1, U2, U3]);
+    }
+    #[test]
+    fn test_intersect() {
+        assert_type_eq!(Intersect::<tarr![], tarr![]>, tarr![]); // {} & {} = {}
+        assert_type_eq!(Intersect::<tarr![], tarr![U0]>, tarr![]); // {} & {0} = {}
+        assert_type_eq!(Intersect::<tarr![U0], tarr![]>, tarr![]); // {0} & {} = {}
+        assert_type_eq!(Intersect::<tarr![U0], tarr![U0]>, tarr![U0]); // {0} & {0} = {0}
+        assert_type_eq!(Intersect::<tarr![U0], tarr![U1]>, tarr![]); // {0} & {1} = {}
+        assert_type_eq!(Intersect::<tarr![U0, U2], tarr![U1, U2]>, tarr![U2]);
+        assert_type_eq!(Intersect::<tarr![U0, U3], tarr![U1, U2]>, tarr![]);
+    }
+    #[test]
+    fn test_diff() {
+        assert_type_eq!(Diff::<tarr![], tarr![]>, tarr![]); // {} - {} = {}
+        assert_type_eq!(Diff::<tarr![], tarr![U0]>, tarr![]); // {} - {0} = {}
+        assert_type_eq!(Diff::<tarr![U0], tarr![]>, tarr![U0]); // {0} - {} = {0}
+        assert_type_eq!(Diff::<tarr![U0], tarr![U0]>, tarr![]); // {0} - {0} = {}
+        assert_type_eq!(Diff::<tarr![U0], tarr![U1]>, tarr![U0]); // {0} - {1} = {0}
+        assert_type_eq!(Diff::<tarr![U0, U2], tarr![U1, U2]>, tarr![U0]);
+        assert_type_eq!(Diff::<tarr![U0, U3], tarr![U1, U2]>, tarr![U0, U3]);
+    }
+    #[test]
+    fn test_sym_diff() {
+        assert_type_eq!(SymDiff::<tarr![], tarr![]>, tarr![]); // {} ^ {} = {}
+        assert_type_eq!(SymDiff::<tarr![], tarr![U0]>, tarr![U0]); // {} ^ {0} = {0}
+        assert_type_eq!(SymDiff::<tarr![U0], tarr![]>, tarr![U0]); // {0} ^ {} = {0}
+        assert_type_eq!(SymDiff::<tarr![U0], tarr![U0]>, tarr![]); // {0} ^ {0} = {}
+        assert_type_eq!(SymDiff::<tarr![U0], tarr![U1]>, tarr![U0, U1]); // {0} ^ {1} = {0, 1}
+        assert_type_eq!(SymDiff::<tarr![U0, U2], tarr![U1, U2]>, tarr![U0, U1]);
+        assert_type_eq!(
+            SymDiff::<tarr![U0, U3], tarr![U1, U2]>,
+            tarr![U0, U1, U2, U3]
+        );
+    }
+    #[test]
+    fn test_is_subset() {
+        assert_eq!(IsSubset::<tarr![], tarr![]>::BOOL, true); // {} <= {} = true
+        assert_eq!(IsSubset::<tarr![], tarr![U0]>::BOOL, true); // {} <= {0} = true
+        assert_eq!(IsSubset::<tarr![U0], tarr![]>::BOOL, false); // {0} <= {} = false
+        assert_eq!(IsSubset::<tarr![U0], tarr![U0]>::BOOL, true); // {0} <= {0} = true
+        assert_eq!(IsSubset::<tarr![U0], tarr![U1]>::BOOL, false); // {0} <= {1} = false
+        assert_eq!(IsSubset::<tarr![U0, U2], tarr![U1, U2]>::BOOL, false);
+        assert_eq!(IsSubset::<tarr![U0, U3], tarr![U1, U2]>::BOOL, false);
+        assert_eq!(IsSubset::<tarr![U0, U2], tarr![U0, U1, U2]>::BOOL, true);
+        assert_eq!(IsSubset::<tarr![U0, U1, U2], tarr![U1, U2]>::BOOL, false);
+        assert_eq!(IsSubset::<tarr![U0, U1, U3], tarr![U1, U2]>::BOOL, false);
+    }
 }

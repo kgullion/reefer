@@ -68,11 +68,90 @@ mod tests {
     use super::*;
     #[allow(unused_imports)]
     use typenum::{B0, B1, U0, U1, U2, U3, U4, U5, U6, U7, U8, U9};
-
+    /// U0 represents the empty set, so the parity of the symmetric difference is always false.
     #[test]
-    fn swap_parity() {
-        assert!(!SwapParity::<U0, U0>::BOOL);
-        assert!(!SwapParity::<U1, U2>::BOOL);
-        assert!(SwapParity::<U2, U1>::BOOL);
+    fn test_swap_parity_scalar() {
+        assert_eq!(SwapParity::<U0, U1>::BOOL, false); // 1 * e1 = e1
+        assert_eq!(SwapParity::<U1, U0>::BOOL, false); // e1 * 1 = e1
+
+        assert_eq!(SwapParity::<U0, U2>::BOOL, false); // 1 * e2 = e2
+        assert_eq!(SwapParity::<U2, U0>::BOOL, false); // e2 * 1 = e2
+
+        assert_eq!(SwapParity::<U0, U3>::BOOL, false); // 1 * e12 = e12
+        assert_eq!(SwapParity::<U3, U0>::BOOL, false); // e12 * 1 = e12
+
+        assert_eq!(SwapParity::<U0, U4>::BOOL, false); // 1 * e3 = e3
+        assert_eq!(SwapParity::<U4, U0>::BOOL, false); // e3 * 1 = e3
+
+        assert_eq!(SwapParity::<U0, U7>::BOOL, false); // 1 * e123 = e123
+        assert_eq!(SwapParity::<U7, U0>::BOOL, false); // e123 * 1 = e123
+
+        assert_eq!(SwapParity::<U0, U9>::BOOL, false); // 1 * e14 = e14
+        assert_eq!(SwapParity::<U9, U0>::BOOL, false); // e14 * 1 = e14
+    }
+    /// Basis vectors are represented by PowersOfTwo, so the swap parity should be asymmetric for pairs of PowersOfTwo.
+    #[test]
+    fn test_swap_parity_vectors() {
+        assert_eq!(SwapParity::<U1, U2>::BOOL, false); // e1 * e2 = e12
+        assert_eq!(SwapParity::<U2, U1>::BOOL, true); // e2 * e1 = -e12
+
+        assert_eq!(SwapParity::<U1, U4>::BOOL, false); // e1 * e3 = e13
+        assert_eq!(SwapParity::<U4, U1>::BOOL, true); // e3 * e1 = -e13
+
+        assert_eq!(SwapParity::<U1, U8>::BOOL, false); // e1 * e4 = e14
+        assert_eq!(SwapParity::<U8, U1>::BOOL, true); // e4 * e1 = -e14
+
+        assert_eq!(SwapParity::<U2, U4>::BOOL, false); // e2 * e3 = e23
+        assert_eq!(SwapParity::<U4, U2>::BOOL, true); // e3 * e2 = -e23
+
+        assert_eq!(SwapParity::<U2, U8>::BOOL, false); // e2 * e4 = e24
+        assert_eq!(SwapParity::<U8, U2>::BOOL, true); // e4 * e2 = -e24
+
+        assert_eq!(SwapParity::<U4, U8>::BOOL, false); // e3 * e4 = e34
+        assert_eq!(SwapParity::<U8, U4>::BOOL, true); // e4 * e3 = -e34
+    }
+    /// General multivectors are Unions of PowersOfTwo, so the swap parity depends on the particular multivectors.
+    #[test]
+    fn test_swap_parity_blades() {
+        assert_eq!(SwapParity::<U3, U5>::BOOL, true); // e12 * e13 = -e23
+        assert_eq!(SwapParity::<U5, U3>::BOOL, false); // e13 * e12 = e23
+
+        assert_eq!(SwapParity::<U3, U6>::BOOL, false); // e12 * e23 = e13
+        assert_eq!(SwapParity::<U6, U3>::BOOL, true); // e23 * e12 = -e13
+
+        assert_eq!(SwapParity::<U3, U7>::BOOL, true); // e12 * e123 = -e3
+        assert_eq!(SwapParity::<U7, U3>::BOOL, true); // e123 * e12 = -e3
+
+        assert_eq!(SwapParity::<U3, U9>::BOOL, true); // e12 * e14 = -e24
+        assert_eq!(SwapParity::<U9, U3>::BOOL, false); // e14 * e12 = e24
+
+        assert_eq!(SwapParity::<U5, U6>::BOOL, true); // e13 * e23 = -e12
+        assert_eq!(SwapParity::<U6, U5>::BOOL, false); // e23 * e13 = e12
+
+        assert_eq!(SwapParity::<U5, U7>::BOOL, false); // e13 * e123 = e2
+        assert_eq!(SwapParity::<U7, U5>::BOOL, false); // e123 * e13 = e2
+
+        assert_eq!(SwapParity::<U5, U9>::BOOL, true); // e13 * e14 = -e4
+        assert_eq!(SwapParity::<U9, U5>::BOOL, false); // e14 * e13 = e4
+
+        assert_eq!(SwapParity::<U6, U7>::BOOL, true); // e23 * e123 = -e1
+        assert_eq!(SwapParity::<U7, U6>::BOOL, true); // e123 * e23 = -e1
+
+        assert_eq!(SwapParity::<U6, U9>::BOOL, false); // e23 * e14 = e1234
+        assert_eq!(SwapParity::<U9, U6>::BOOL, false); // e14 * e23 = e1234
+    }
+    /// Test squares of various blades.
+    #[test]
+    fn test_swap_parity_scalars() {
+        assert_eq!(SwapParity::<U0, U0>::BOOL, false); // 1 * 1 = 1
+        assert_eq!(SwapParity::<U1, U1>::BOOL, false); // e1 * e1 = 1
+        assert_eq!(SwapParity::<U2, U2>::BOOL, false); // e2 * e2 = 1
+        assert_eq!(SwapParity::<U3, U3>::BOOL, true); // e12 * e12 = -1
+        assert_eq!(SwapParity::<U4, U4>::BOOL, false); // e3 * e3 = 1
+        assert_eq!(SwapParity::<U5, U5>::BOOL, true); // e13 * e13 = -1
+        assert_eq!(SwapParity::<U6, U6>::BOOL, true); // e23 * e23 = -1
+        assert_eq!(SwapParity::<U7, U7>::BOOL, true); // e123 * e123 = -1
+        assert_eq!(SwapParity::<U8, U8>::BOOL, false); // e4 * e4 = 1
+        assert_eq!(SwapParity::<U9, U9>::BOOL, true); // e14 * e14 = -1
     }
 }

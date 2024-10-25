@@ -5,7 +5,7 @@ use crate::{
     field::Field,
     metric::{IntFromSwapParityWithOverlaps, Metric},
     utils::{
-        typeset::{Intersect, IntersectMerge, Sort, Sorted, Union, UnionMerge},
+        typeset::{Intersect, IntersectMerge, Union, UnionMerge},
         At, Branch, Contains, Count, CountOf, Flat, Flatten, Get, IdxOf, If, IndexOf, SwapPar,
     },
 };
