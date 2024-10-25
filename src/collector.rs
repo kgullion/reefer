@@ -1,5 +1,5 @@
 use crate::{
-    basis::{Basis, BasisInfo, ZeroVector},
+    basis::{Basis, ZeroVector},
     field::Field,
     metric::Metric,
     utils::{Contains, IdxOf, IndexOf},
@@ -139,8 +139,6 @@ impl<F: Field, OUT: TypeArray> CartCollector<F, OUT> for ZeroVector {
 }
 impl<U: Unsigned, M: Metric, F: Field, OUT: TypeArray + IndexOf<U>> CartCollector<F, OUT>
     for Basis<U, M, B0>
-where
-    Basis<U, M, B0>: BasisInfo,
 {
     fn collect(out: &mut [F], left: &F, right: &F) {
         // branch should get compiled away since this is a comptime const 🤞
@@ -152,8 +150,6 @@ where
 }
 impl<U: Unsigned, M: Metric, F: Field, OUT: TypeArray + IndexOf<U>> CartCollector<F, OUT>
     for Basis<U, M, B1>
-where
-    Basis<U, M, B1>: BasisInfo,
 {
     fn collect(out: &mut [F], left: &F, right: &F) {
         // branch should get compiled away since this is a comptime const 🤞

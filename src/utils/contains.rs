@@ -54,7 +54,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use typenum::{tarr, U0, U1, U10, U2, U3, U4, U5, U6, U7, U8, U9};
+    use typenum::{assert_type_eq, tarr, U0, U1, U10, U2, U3, U4, U5, U6, U7, U8, U9};
 
     type A = tarr![U9, U8, U7, U6, U5, U4, U3, U2, U1, U0];
     #[test]
@@ -90,6 +90,9 @@ mod tests {
     /// ```
     #[test]
     fn test_get() {
+        assert_type_eq!(Get::<U0, U0>, B0);
+        assert_type_eq!(Get::<U1, U0>, B1);
+        assert_type_eq!(Get::<U1, U1>, B0);
         assert_eq!(Get::<A, U0>::USIZE, 9);
         assert_eq!(Get::<A, U1>::USIZE, 8);
         assert_eq!(Get::<A, U2>::USIZE, 7);

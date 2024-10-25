@@ -1,12 +1,12 @@
-#![allow(unused_imports)]
+#![allow(unused)]
 use crate::{
-    basis::{BNew, BProd, Basis, BasisCart, BasisInfo, IntoBasis, ZeroVector},
+    basis::{Basis, ZeroVector},
     collector::{CartCollector, CollectInto, Collector},
     field::Field,
-    metric::{IntFromSwapParityWithOverlaps, Metric},
+    metric::Metric,
     utils::{
         typeset::{Intersect, IntersectMerge, Union, UnionMerge},
-        At, Branch, Contains, Count, CountOf, Flat, Flatten, Get, IdxOf, If, IndexOf, SwapPar,
+        At, Branch, Contains, Count, CountOf, Flat, Flatten, Get, IdxOf, If, IndexOf, SwapParInner,
     },
 };
 use core::marker::PhantomData;
@@ -33,11 +33,10 @@ impl<M: Metric> BasisSet<M> for ATerm {
 }
 impl<BS: BasisSet<M> + Len<Output: Unsigned + ArrayLength + Add<B1>>, U: Unsigned, M: Metric>
     BasisSet<M> for TArr<U, BS>
-where
-    Basis<U, M, B0>: BasisInfo,
 {
     type Output = TArr<U, BS>;
 }
+
 impl<BS: BasisSet<M> + Len<Output: Unsigned + ArrayLength>, M: Metric, F: Field> Mvect<BS, M, F> {
     /// Create a new multivector from a GenericArray of field elements.
     #[inline(always)]
@@ -50,30 +49,28 @@ impl<BS: BasisSet<M> + Len<Output: Unsigned + ArrayLength>, M: Metric, F: Field>
         self.0.len()
     }
 }
+
 pub trait IntoBasisSet {
     type Output;
 }
 impl IntoBasisSet for ZeroVector {
     type Output = tarr![];
 }
-impl<U: Unsigned + CountOf<B1> + Add<B1>, M: Metric, S: Bit> IntoBasisSet for Basis<U, M, S>
-where
-    Basis<U, M, S>: BasisInfo,
-{
+impl<U: Unsigned + CountOf<B1> + Add<B1>, M: Metric, S: Bit> IntoBasisSet for Basis<U, M, S> {
     type Output = tarr![U];
 }
 
 // --------------------------------------------
-trait MvInfo {
-    type BasisSet: BasisSet<Self::Metric>;
-    type Field: Field;
-    type Metric: Metric;
-}
-impl<BS: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> MvInfo for Mvect<BS, M, F> {
-    type BasisSet = BS;
-    type Field = F;
-    type Metric = M;
-}
+// trait MvInfo {
+//     type BasisSet: BasisSet<Self::Metric>;
+//     type Field: Field;
+//     type Metric: Metric;
+// }
+// impl<BS: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> MvInfo for Mvect<BS, M, F> {
+//     type BasisSet = BS;
+//     type Field = F;
+//     type Metric = M;
+// }
 
 // --------------------------------------------
 // Default - create a new multivector with all elements set to zero
@@ -94,19 +91,19 @@ pub trait IntoMv<F: Field> {
     type Output;
     fn into_mv() -> Self::Output;
 }
-impl<F: Field, U: Unsigned, M: Metric, S: Bit> IntoMv<F> for Basis<U, M, S>
-where
-    Basis<U, M, S>: BasisInfo,
-    Basis<U, M, B0>: BasisInfo,
-{
+impl<F: Field, U: Unsigned, M: Metric> IntoMv<F> for Basis<U, M, B0> {
     type Output = Mvect<tarr![U], M, F>;
     fn into_mv() -> Self::Output {
         let mut out = Mvect::<tarr![U], M, F>::default();
-        if S::BOOL {
-            out.0[0] = -F::one();
-        } else {
-            out.0[0] = F::one();
-        }
+        out.0[0] = F::one();
+        out
+    }
+}
+impl<F: Field, U: Unsigned, M: Metric> IntoMv<F> for Basis<U, M, B1> {
+    type Output = Mvect<tarr![U], M, F>;
+    fn into_mv() -> Self::Output {
+        let mut out = Mvect::<tarr![U], M, F>::default();
+        out.0[0] = -F::one();
         out
     }
 }
@@ -297,8 +294,7 @@ impl<
         K: MvMulMarker<L, R>,
     > MvMulRunInner<K, F, OUT, L, TArr<R, B>> for M
 where
-    Basis<L, M, B0>: BasisInfo + Mul<Basis<R, M, B0>, Output: CartCollector<F, OUT>>,
-    Basis<R, M, B0>: BasisInfo,
+    Basis<L, M, B0>: Mul<Basis<R, M, B0>, Output: CartCollector<F, OUT>>,
 {
     fn mv_mul_inner(out: &mut [F], left: &F, right: &[F]) {
         if <K as MvMulMarker<L, R>>::Output::BOOL {
@@ -347,8 +343,7 @@ impl<L: Unsigned, R: Unsigned, B: BasisSet<M>, M: Metric + MvMulTypeInner<K, L, 
     MvMulTypeInner<K, L, TArr<R, B>> for M
 where
     K: MvMulMarker<L, R>,
-    Basis<L, M, B0>: BasisInfo + Mul<Basis<R, M, B0>, Output: IntoBasisSet<Output: BasisSet<M>>>,
-    Basis<R, M, B0>: BasisInfo,
+    Basis<L, M, B0>: Mul<Basis<R, M, B0>, Output: IntoBasisSet<Output: BasisSet<M>>>,
     <K as MvMulMarker<L, R>>::Output: Branch<
         <Prod<Basis<L, M, B0>, Basis<R, M, B0>> as IntoBasisSet>::Output,
         tarr![],
@@ -544,7 +539,8 @@ mod tests {
     fn test_mul() {
         let e = <Scalar as IntoMv<f32>>::into_mv();
         let e1 = <E1 as IntoMv<f32>>::into_mv();
-
-        let c = e * e1;
+        println!("{:?}    {:?}", &e.0, &e1.0);
+        let c = e1.clone() * (e + e1.clone());
+        println!("{:?}", c.0);
     }
 }

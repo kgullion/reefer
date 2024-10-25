@@ -1,6 +1,6 @@
-use super::{Count, Get};
-use core::ops::{BitAnd, BitXor};
-use typenum::{And, Bit, UInt, Unsigned, Xor, B0, B1, U0};
+use super::{At, Count, CountOf, Get};
+use core::ops::{Add, BitAnd, BitXor};
+use typenum::{And, Bit, UInt, Unsigned, Xor, B0, B1, U0, U1};
 
 // ---------------------------------------------------------------------------------------
 // SwapParity - parity of swaps needed to merge two basis vectorsets
@@ -33,34 +33,81 @@ use typenum::{And, Bit, UInt, Unsigned, Xor, B0, B1, U0};
 //
 // and finally, encoded into types:
 /// Parity of the symmetric difference of two basis vectors.
-pub type SwapParity<L, R> = <L as SwapPar<R, Get<Count<L, B1>, U0>, B0>>::Parity;
+pub type SwapParity<L, R> = <L as SwapPar<R>>::Parity;
+pub trait SwapPar<R> {
+    type Parity;
+}
+impl<
+        L: Unsigned + CountOf<B1, Count: At<U0>> + SwapParInner<R, Get<Count<L, B1>, U0>, B0>,
+        R: Unsigned,
+    > SwapPar<R> for L
+{
+    type Parity = <L as SwapParInner<R, Get<Count<L, B1>, U0>, B0>>::Parity;
+}
 
-pub trait SwapPar<R, LP, TP> {
+pub trait SwapParInner<R, LP, TP> {
     type Parity;
 }
 
 // base cases, swap parity is total parity
-impl<LP: Bit, TP: Bit> SwapPar<U0, LP, TP> for U0 {
+impl<LP: Bit, TP: Bit> SwapParInner<U0, LP, TP> for U0 {
     type Parity = TP;
 }
-impl<LU: Unsigned, LB: Bit, LP: Bit, TP: Bit> SwapPar<U0, LP, TP> for UInt<LU, LB> {
+impl<LU: Unsigned, LB: Bit, LP: Bit, TP: Bit> SwapParInner<U0, LP, TP> for UInt<LU, LB> {
     type Parity = TP;
 }
-impl<RU: Unsigned, RB: Bit, LP: Bit, TP: Bit> SwapPar<UInt<RU, RB>, LP, TP> for U0 {
+impl<RU: Unsigned, RB: Bit, LP: Bit, TP: Bit> SwapParInner<UInt<RU, RB>, LP, TP> for U0 {
     type Parity = TP;
 }
 
 // recursive case, see above for explanation
 impl<
-        LU: Unsigned + SwapPar<RU, Xor<LP, LB>, Xor<TP, And<RB, Xor<LP, LB>>>>, // 🫠
+        LU: Unsigned + SwapParInner<RU, Xor<LP, LB>, Xor<TP, And<RB, Xor<LP, LB>>>>, // 🫠
         RU: Unsigned,
         LB: Bit,
         RB: Bit + BitAnd<Xor<LP, LB>>,
         LP: Bit + BitXor<LB>,
         TP: Bit + BitXor<And<RB, Xor<LP, LB>>>,
-    > SwapPar<UInt<RU, RB>, LP, TP> for UInt<LU, LB>
+    > SwapParInner<UInt<RU, RB>, LP, TP> for UInt<LU, LB>
 {
     type Parity = LU::Parity;
+}
+
+// type IsInvolute = Flip<Get<U::Count, U0>>; // grade & 1 != 0
+// type IsReverse = Flip<Get<Self::Grade, U1>>; // grade & 2 != 0
+// type IsConjugate = Flip<Get<Add1<Self::Grade>, U1>>; // (grade + 1) & 2 != 0
+// type IsZero = B0;
+
+// ---------------------------------------------------------------------------------------
+#[allow(unused)]
+pub type InvoluteParity<U> = <U as InvolutePar>::Parity;
+pub trait InvolutePar: Unsigned {
+    type Parity: Bit;
+}
+impl<U: Unsigned + CountOf<B1, Count: At<U0, Output: Bit>>> InvolutePar for U {
+    // grade & 1 != 0
+    type Parity = Get<Count<U, B1>, U0>;
+}
+
+// ---------------------------------------------------------------------------------------
+pub type ReverseParity<U> = <U as ReversePar>::Parity;
+pub trait ReversePar: Unsigned {
+    type Parity: Bit;
+}
+impl<U: Unsigned + CountOf<B1, Count: At<U1, Output: Bit>>> ReversePar for U {
+    // grade & 2 != 0
+    type Parity = Get<Count<U, B1>, U1>;
+}
+
+// ---------------------------------------------------------------------------------------
+#[allow(unused)]
+pub type ConjugateParity<U> = <U as ConjugatePar>::Parity;
+pub trait ConjugatePar: Unsigned {
+    type Parity: Bit;
+}
+impl<U: Unsigned + CountOf<B1, Count: At<U1, Output: Bit> + Add<B1>>> ConjugatePar for U {
+    // (grade + 1) & 2 != 0
+    type Parity = Get<Count<U, B1>, U1>;
 }
 
 #[cfg(test)]

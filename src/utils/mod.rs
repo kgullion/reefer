@@ -1,11 +1,11 @@
 pub mod contains;
 pub mod count;
-pub mod swap_parity;
+pub mod parity;
 pub mod typeset;
 
 pub use contains::{At, Contains, Get, IdxOf, IndexOf};
 pub use count::{Count, CountOf};
-pub use swap_parity::{SwapPar, SwapParity};
+pub use parity::{SwapParInner, SwapParity};
 
 use typenum::{ATerm, Bit, TArr, TypeArray, B0, B1};
 
