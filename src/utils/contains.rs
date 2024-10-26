@@ -1,5 +1,5 @@
 use core::ops::{Add, BitOr, Sub};
-use typenum::{ATerm, Bit, Eq, IsEqual, Or, Sub1, Sum, TArr, UInt, Unsigned, B0, B1, U0};
+use typenum::{tarr, Bit, Eq, IsEqual, Or, Sub1, Sum, TArr, UInt, Unsigned, B0, B1, U0};
 
 pub type IdxOf<A, V> = <A as IndexOf<V>>::Idx;
 pub type Contains<A, V> = <A as IndexOf<V>>::Found;
@@ -9,7 +9,7 @@ pub trait IndexOf<V> {
     type Idx: Unsigned;
     type Found: Bit;
 }
-impl<V> IndexOf<V> for ATerm {
+impl<V> IndexOf<V> for tarr![] {
     type Idx = U0; // Always zero if not found
     type Found = B0;
 }

@@ -4,8 +4,8 @@ use crate::utils::{
 };
 use core::ops::BitAnd;
 use typenum::{
-    tarr, ATerm, And, Bit, Integer, IsNotEqual, NotEq, TArr, TypeArray, UInt, Unsigned, B0, B1, N1,
-    P1, U0, Z0,
+    tarr, And, Bit, Integer, IsNotEqual, NotEq, TArr, TypeArray, UInt, Unsigned, B0, B1, N1, P1,
+    U0, Z0,
 };
 
 pub trait Metric: TypeArray + Copy + Clone {
@@ -14,7 +14,7 @@ pub trait Metric: TypeArray + Copy + Clone {
     type NegMask: Unsigned;
     type ZeroMask: Unsigned;
 }
-impl Metric for ATerm {
+impl Metric for tarr![] {
     type Psuedoscalar = U0;
     type PosMask = U0;
     type NegMask = U0;
@@ -85,7 +85,7 @@ where
 
 pub trait TritMulInner {
     type Output: Trit;
-}
+} //              is_degen? ↰   ↱ parity
 impl TritMulInner for tarr![B0, B0] {
     type Output = P1;
 }
@@ -99,12 +99,13 @@ impl TritMulInner for tarr![B1, B1] {
     type Output = Z0;
 }
 
-pub type TXor<L, R> = <L as TritXor<R>>::Output;
 pub trait TritXor<R: Bit> {
     type Output: Trit;
 }
-
-impl<S: Bit> TritXor<S> for Z0 {
+impl TritXor<B0> for Z0 {
+    type Output = Z0;
+}
+impl TritXor<B1> for Z0 {
     type Output = Z0;
 }
 impl TritXor<B0> for N1 {

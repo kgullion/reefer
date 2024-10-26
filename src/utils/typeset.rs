@@ -1,19 +1,19 @@
 /// --------------------------------------------
 /// set operations for *sorted* TypeArrays
-use typenum::{ATerm, Bit, Cmp, Compare, Equal, Greater, Less, TArr, TypeArray, B0, B1};
+use typenum::{tarr, Bit, Cmp, Compare, Equal, Greater, Less, TArr, TypeArray, B0, B1};
 
 /// Intersection of two sorted TypeArrays
 pub type Intersect<A, B> = <A as IntersectMerge<B>>::Output;
 pub trait IntersectMerge<Rhs> {
     type Output;
 }
-impl<R> IntersectMerge<R> for ATerm {
+impl<R> IntersectMerge<R> for tarr![] {
     // {} * X = {}
-    type Output = ATerm;
+    type Output = tarr![];
 }
-impl<L, A> IntersectMerge<ATerm> for TArr<L, A> {
+impl<L, A> IntersectMerge<tarr![]> for TArr<L, A> {
     // X * {} = {}
-    type Output = ATerm;
+    type Output = tarr![];
 }
 impl<L: Cmp<R>, A, R, B> IntersectMerge<TArr<R, B>> for TArr<L, A>
 where
@@ -42,11 +42,11 @@ pub type Union<A, B> = <A as UnionMerge<B>>::Output;
 pub trait UnionMerge<Rhs> {
     type Output: TypeArray;
 }
-impl<R: TypeArray> UnionMerge<R> for ATerm {
+impl<R: TypeArray> UnionMerge<R> for tarr![] {
     // {} + X = X
     type Output = R;
 }
-impl<L, A> UnionMerge<ATerm> for TArr<L, A> {
+impl<L, A> UnionMerge<tarr![]> for TArr<L, A> {
     // X + {} = X
     type Output = TArr<L, A>;
 }
@@ -78,11 +78,11 @@ pub type Diff<A, B> = <A as DiffMerge<B>>::Output;
 pub trait DiffMerge<Rhs> {
     type Output;
 }
-impl<Rhs> DiffMerge<Rhs> for ATerm {
+impl<Rhs> DiffMerge<Rhs> for tarr![] {
     // {} - X = {}
-    type Output = ATerm;
+    type Output = tarr![];
 }
-impl<L, A> DiffMerge<ATerm> for TArr<L, A> {
+impl<L, A> DiffMerge<tarr![]> for TArr<L, A> {
     // X - {} = X
     type Output = TArr<L, A>;
 }
@@ -117,11 +117,11 @@ pub type IsDisjoint<A, B> = <A as DisjointMerge<B>>::Output;
 pub trait DisjointMerge<Rhs> {
     type Output: Bit;
 }
-impl<Rhs> DisjointMerge<Rhs> for ATerm {
+impl<Rhs> DisjointMerge<Rhs> for tarr![] {
     // {} is disjoint with everything
     type Output = B1;
 }
-impl<L, A> DisjointMerge<ATerm> for TArr<L, A> {
+impl<L, A> DisjointMerge<tarr![]> for TArr<L, A> {
     // everything is disjoint with {}
     type Output = B1;
 }
@@ -152,11 +152,11 @@ pub type IsSubset<A, B> = <A as SubsetMerge<B>>::Output;
 pub trait SubsetMerge<Rhs> {
     type Output: Bit;
 }
-impl<Rhs> SubsetMerge<Rhs> for ATerm {
+impl<Rhs> SubsetMerge<Rhs> for tarr![] {
     // {} is a subset of everything
     type Output = B1;
 }
-impl<L, A> SubsetMerge<ATerm> for TArr<L, A> {
+impl<L, A> SubsetMerge<tarr![]> for TArr<L, A> {
     // nothing is a subset of {}
     type Output = B0;
 }

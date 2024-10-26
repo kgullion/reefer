@@ -3,7 +3,7 @@ pub mod count;
 pub mod parity;
 pub mod typeset;
 
-use typenum::{ATerm, Bit, TArr, TypeArray, B0, B1};
+use typenum::{tarr, Bit, TArr, TypeArray, B0, B1};
 
 // If-Then-Else
 pub type If<Cond, Then, Else> = <Cond as Branch<Then, Else>>::Output;
@@ -24,11 +24,11 @@ pub type Flat<A> = <A as Flatten>::Output;
 pub trait Flatten {
     type Output: TypeArray;
 }
-impl Flatten for ATerm {
+impl Flatten for tarr![] {
     // flat([]) = []
-    type Output = ATerm;
+    type Output = tarr![];
 }
-impl<B: Flatten> Flatten for TArr<ATerm, B> {
+impl<B: Flatten> Flatten for TArr<tarr![], B> {
     // flat([[] | B]) = flat(B)
     type Output = B::Output;
 }
