@@ -11,11 +11,12 @@ use crate::{
         Branch, If,
     },
 };
-use core::ops::{BitAnd, BitOr, BitXor, Mul};
-use generic_array::ArrayLength;
+use core::marker::PhantomData;
+use core::ops::{Add, BitAnd, BitOr, BitXor, Mul};
+use generic_array::{ArrayLength, GenericArray};
 use typenum::{
-    tarr, And, Bit, Eq, IsEqual, IsNotEqual, Len, NotEq, Or, Prod, TArr, TypeArray, Unsigned, Xor,
-    B0, B1, U0,
+    tarr, And, Bit, Eq, IsEqual, IsNotEqual, Len, NotEq, Or, Prod, TArr, TypeArray, UInt, Unsigned,
+    Xor, B0, B1, U0,
 };
 
 // --------------------------------------------
@@ -323,5 +324,88 @@ impl<
         let mut out = Self::Output::default();
         mv_mul_runner::<FatDotMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
         out
+    }
+}
+// --------------------------------------------
+impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B0> {
+    type Output = Mvect<tarr![U], M, F>;
+    fn mul(self, rhs: F) -> Self::Output {
+        let mut out = GenericArray::default();
+        out[0] = rhs;
+        Mvect(out, PhantomData)
+    }
+}
+impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B1> {
+    type Output = Mvect<tarr![U], M, F>;
+    fn mul(self, rhs: F) -> Self::Output {
+        let mut out = GenericArray::default();
+        out[0] = -rhs;
+        Mvect(out, PhantomData)
+    }
+}
+impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> core::ops::Mul<F>
+    for Mvect<A, M, F>
+{
+    type Output = Mvect<A, M, F>;
+    fn mul(self, rhs: F) -> Self::Output {
+        let mut out = self;
+        for i in 0..out.0.len() {
+            out.0[i] *= rhs.clone();
+        }
+        out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use typenum::{B0, P1, U0, U1, U2, U3, U4, U5, U6, U7, Z0};
+
+    type Metric = tarr![Z0, P1, P1];
+    type Pga2d<U> = Basis<U, Metric, B0>;
+
+    const E: Pga2d<U0> = Pga2d::<U0>::new();
+    const E0: Pga2d<U1> = Pga2d::<U1>::new();
+    const E1: Pga2d<U2> = Pga2d::<U2>::new();
+    const E01: Pga2d<U3> = Pga2d::<U3>::new();
+    const E2: Pga2d<U4> = Pga2d::<U4>::new();
+    const E02: Pga2d<U5> = Pga2d::<U5>::new();
+    const E12: Pga2d<U6> = Pga2d::<U6>::new();
+    const E012: Pga2d<U7> = Pga2d::<U7>::new();
+
+    #[test]
+    fn test_geo_prod() {
+        // (1+2e0+3e1+5e2+7e01+11e02+13e12+17e012)
+        // *(19+23e0+29e1+31e2+37e01+41e02+43e12+47e012)
+        // =−298−1053e0+274e1+122e2+981e01−617e02+238e12+715e012
+        let a = 1.0 * E
+            + 2.0 * E0
+            + 3.0 * E1
+            + 5.0 * E2
+            + 7.0 * E01
+            + 11.0 * E02
+            + 13.0 * E12
+            + 17.0 * E012;
+        let b = 19.0 * E
+            + 23.0 * E0
+            + 29.0 * E1
+            + 31.0 * E2
+            + 37.0 * E01
+            + 41.0 * E02
+            + 43.0 * E12
+            + 47.0 * E012;
+        let expected = -298.0 * E - 1053.0 * E0 + 274.0 * E1 - 122.0 * E2 + 981.0 * E01
+            - 617.0 * E02
+            + 238.0 * E12
+            + 715.0 * E012;
+        let actual = a * b;
+
+        println!("a = {}", a);
+        println!("b = {}", b);
+        println!("expected = {}", expected);
+        println!("actual   = {}", actual);
+        println!("diff     = {}", expected - actual);
+
+        assert!(expected == actual);
     }
 }
