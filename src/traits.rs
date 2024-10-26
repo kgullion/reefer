@@ -1,6 +1,18 @@
 use crate::GeometricObject;
 use typenum::{TypeArray, Unsigned};
 
+pub trait Commutator<Rhs> {
+    type Output;
+    fn commutator(self, rhs: Rhs) -> Self::Output;
+}
+pub trait ScalarProduct<Rhs> {
+    type Output;
+    fn scalar_prod(self, rhs: Rhs) -> Self::Output;
+}
+pub trait FatDot<Rhs> {
+    type Output;
+    fn fat_dot(self, rhs: Rhs) -> Self::Output;
+}
 pub trait Dual {
     type Output;
     fn dual(self) -> Self::Output;

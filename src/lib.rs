@@ -32,12 +32,15 @@ impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> GeometricOb
 //     + IndexMut<Basis> // ☒ ☐
 //     + Add             // ☐ ☑ Addition
 //     + Sub             // ☐ ☑ Subtraction
-//     + BitXor          // ☑ ☐ Outer Product
-//     + Mul             // ☑ ☐ Geometric Product
+//     + BitXor          // ☑ ☑ Outer Product
+//     + Mul             // ☑ ☑ Geometric Product
+//     + Commutator      // ☐ ☑ Commutator
+//     + ScalarProduct   // ☐ ☑ Scalar Product
+//     + FatDot          // ☐ ☑ "Fat" Dot Product
 //     + BitAnd          // ☐ ☐ Regressive Product
-//     + BitOr           // ☑ ☐ Inner Product
-//     + Shl             // ☑ ☐ Left Contraction
-//     + Shr             // ☑ ☐ Right Contraction
+//     + BitOr           // ☑ ☑ Inner Product
+//     + Shl             // ☑ ☑ Left Contraction
+//     + Shr             // ☑ ☑ Right Contraction
 //     + Rem             // ☐ ☐
 //     + Fn(Rhs) -> Out  // ☐ ☐ Sandwich Product
 //     + Dual + Not      // ☑ ☐ Dual

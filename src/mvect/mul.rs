@@ -4,14 +4,19 @@ use crate::{
     field::Field,
     metric::Metric,
     mvect::{basis_set::BasisSet, into::IntoBasisSet, Mvect},
+    traits::{Commutator, FatDot, ScalarProduct},
     utils::{
+        parity::{ReversePar, ReverseParity},
         typeset::{Union, UnionMerge},
         Branch, If,
     },
 };
-use core::ops::{BitAnd, Mul};
+use core::ops::{BitAnd, BitOr, BitXor, Mul};
 use generic_array::ArrayLength;
-use typenum::{tarr, And, Bit, Eq, IsEqual, Len, Prod, TArr, TypeArray, Unsigned, B0, B1, U0};
+use typenum::{
+    tarr, And, Bit, Eq, IsEqual, IsNotEqual, Len, NotEq, Or, Prod, TArr, TypeArray, Unsigned, Xor,
+    B0, B1, U0,
+};
 
 // --------------------------------------------
 // multivector multiplication
@@ -203,25 +208,73 @@ impl<
     }
 }
 // ----
-// Commutator Product - TODO
+// Commutator Product
 pub struct CommutatorMarker;
+impl<L: Unsigned + BitXor<R, Output: ReversePar>, R: Unsigned> MvMulMarker<L, R>
+    for CommutatorMarker
+{
+    // (a*b - b*a)/2 -> Not<IsReverse<Prod<L,R>>> // if an element is it's own reverse, it's not in the result
+    type Output = ReverseParity<Xor<L, R>>;
+}
+impl<
+        A: BasisSet<M> + Len<Output: ArrayLength>,
+        B: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric
+            + MvMulType<CommutatorMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
+            + MvMulRun<CommutatorMarker, F, <M as MvMulType<CommutatorMarker, A, B>>::Output, A, B>,
+        F: Field,
+    > Commutator<Mvect<B, M, F>> for Mvect<A, M, F>
+{
+    type Output = Mvect<<M as MvMulType<CommutatorMarker, A, B>>::Output, M, F>;
+    fn commutator(self, rhs: Mvect<B, M, F>) -> Self::Output {
+        let mut out = Self::Output::default();
+        mv_mul_runner::<CommutatorMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
+        out
+    }
+}
 // ----
-// Inner Product - TODO
+// Inner Product
 pub struct InnerProdMarker;
+impl<L: Unsigned + BitAnd<R, Output: IsNotEqual<U0>>, R: Unsigned> MvMulMarker<L, R>
+    for InnerProdMarker
+{
+    // Opposite selection to outer product
+    type Output = NotEq<And<L, R>, U0>;
+}
+impl<
+        A: BasisSet<M> + Len<Output: ArrayLength>,
+        B: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric
+            + MvMulType<CommutatorMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
+            + MvMulRun<CommutatorMarker, F, <M as MvMulType<CommutatorMarker, A, B>>::Output, A, B>,
+        F: Field,
+    > core::ops::BitOr<Mvect<B, M, F>> for Mvect<A, M, F>
+{
+    type Output = Mvect<<M as MvMulType<CommutatorMarker, A, B>>::Output, M, F>;
+    fn bitor(self, rhs: Mvect<B, M, F>) -> Self::Output {
+        let mut out = Self::Output::default();
+        mv_mul_runner::<CommutatorMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
+        out
+    }
+}
 // ----
-// Left Contraction - TODO
+// Left Contraction
 pub struct LeftContractionMarker;
-// impl<L, R> Decider for LeftContractionMarker<L, R> {
-//     // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉ₛ-ₜ // R⊆L
-//     type Output = ;
-// }
+impl<L: Unsigned + BitAnd<R, Output: IsEqual<R>>, R: Unsigned> MvMulMarker<L, R>
+    for LeftContractionMarker
+{
+    // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉ₛ-ₜ // R⊆L = L&R==R
+    type Output = Eq<And<L, R>, R>;
+}
 // ----
-// Right Contraction - TODO
+// Right Contraction
 pub struct RightContractionMarker;
-// impl<L, R> Decider for RightContractionMarker<L, R> {
-//     // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉ₜ-ₛ // L⊆R
-//     type Output = ;
-// }
+impl<L: Unsigned + BitAnd<R, Output: IsEqual<L>>, R: Unsigned> MvMulMarker<L, R>
+    for RightContractionMarker
+{
+    // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉ₜ-ₛ // L⊆R = L&R==L
+    type Output = Eq<And<L, R>, L>;
+}
 
 // ----
 // Scalar Product
@@ -237,10 +290,10 @@ impl<
             + MvMulType<ScalarProdMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
             + MvMulRun<ScalarProdMarker, F, <M as MvMulType<ScalarProdMarker, A, B>>::Output, A, B>,
         F: Field,
-    > core::ops::BitOr<Mvect<B, M, F>> for Mvect<A, M, F>
+    > ScalarProduct<Mvect<B, M, F>> for Mvect<A, M, F>
 {
     type Output = Mvect<<M as MvMulType<ScalarProdMarker, A, B>>::Output, M, F>;
-    fn bitor(self, rhs: Mvect<B, M, F>) -> Self::Output {
+    fn scalar_prod(self, rhs: Mvect<B, M, F>) -> Self::Output {
         let mut out = Self::Output::default();
         mv_mul_runner::<ScalarProdMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
         out
@@ -249,7 +302,26 @@ impl<
 // ----
 // FatDot Product
 pub struct FatDotMarker;
-// impl<L, R> Decider for RightContractionMarker<L, R> {
-//     // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉|ₜ-ₛ| // L⊆R || R⊆L
-//     type Output = B0;
-// }
+impl<L: Unsigned, R: Unsigned> MvMulMarker<L, R> for FatDotMarker
+where
+    L: BitAnd<R, Output: IsEqual<L, Output: BitOr<Eq<And<L, R>, R>, Output: Bit>> + IsEqual<R>>,
+{
+    // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉|ₜ-ₛ| // L⊆R || R⊆L
+    type Output = Or<Eq<And<L, R>, L>, Eq<And<L, R>, R>>;
+}
+impl<
+        A: BasisSet<M> + Len<Output: ArrayLength>,
+        B: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric
+            + MvMulType<FatDotMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
+            + MvMulRun<FatDotMarker, F, <M as MvMulType<FatDotMarker, A, B>>::Output, A, B>,
+        F: Field,
+    > FatDot<Mvect<B, M, F>> for Mvect<A, M, F>
+{
+    type Output = Mvect<<M as MvMulType<FatDotMarker, A, B>>::Output, M, F>;
+    fn fat_dot(self, rhs: Mvect<B, M, F>) -> Self::Output {
+        let mut out = Self::Output::default();
+        mv_mul_runner::<FatDotMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
+        out
+    }
+}
