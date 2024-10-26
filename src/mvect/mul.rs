@@ -246,15 +246,15 @@ impl<
         A: BasisSet<M> + Len<Output: ArrayLength>,
         B: BasisSet<M> + Len<Output: ArrayLength>,
         M: Metric
-            + MvMulType<CommutatorMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
-            + MvMulRun<CommutatorMarker, F, <M as MvMulType<CommutatorMarker, A, B>>::Output, A, B>,
+            + MvMulType<InnerProdMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
+            + MvMulRun<InnerProdMarker, F, <M as MvMulType<InnerProdMarker, A, B>>::Output, A, B>,
         F: Field,
     > core::ops::BitOr<Mvect<B, M, F>> for Mvect<A, M, F>
 {
-    type Output = Mvect<<M as MvMulType<CommutatorMarker, A, B>>::Output, M, F>;
+    type Output = Mvect<<M as MvMulType<InnerProdMarker, A, B>>::Output, M, F>;
     fn bitor(self, rhs: Mvect<B, M, F>) -> Self::Output {
         let mut out = Self::Output::default();
-        mv_mul_runner::<CommutatorMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
+        mv_mul_runner::<InnerProdMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
         out
     }
 }
@@ -267,6 +267,28 @@ impl<L: Unsigned + BitAnd<R, Output: IsEqual<R>>, R: Unsigned> MvMulMarker<L, R>
     // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉ₛ-ₜ // R⊆L = L&R==R
     type Output = Eq<And<L, R>, R>;
 }
+impl<
+        A: BasisSet<M> + Len<Output: ArrayLength>,
+        B: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric
+            + MvMulType<LeftContractionMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
+            + MvMulRun<
+                LeftContractionMarker,
+                F,
+                <M as MvMulType<LeftContractionMarker, A, B>>::Output,
+                A,
+                B,
+            >,
+        F: Field,
+    > core::ops::Shl<Mvect<B, M, F>> for Mvect<A, M, F>
+{
+    type Output = Mvect<<M as MvMulType<LeftContractionMarker, A, B>>::Output, M, F>;
+    fn shl(self, rhs: Mvect<B, M, F>) -> Self::Output {
+        let mut out = Self::Output::default();
+        mv_mul_runner::<LeftContractionMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
+        out
+    }
+}
 // ----
 // Right Contraction
 pub struct RightContractionMarker;
@@ -275,6 +297,28 @@ impl<L: Unsigned + BitAnd<R, Output: IsEqual<L>>, R: Unsigned> MvMulMarker<L, R>
 {
     // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉ₜ-ₛ // L⊆R = L&R==L
     type Output = Eq<And<L, R>, L>;
+}
+impl<
+        A: BasisSet<M> + Len<Output: ArrayLength>,
+        B: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric
+            + MvMulType<RightContractionMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
+            + MvMulRun<
+                RightContractionMarker,
+                F,
+                <M as MvMulType<RightContractionMarker, A, B>>::Output,
+                A,
+                B,
+            >,
+        F: Field,
+    > core::ops::Shr<Mvect<B, M, F>> for Mvect<A, M, F>
+{
+    type Output = Mvect<<M as MvMulType<RightContractionMarker, A, B>>::Output, M, F>;
+    fn shr(self, rhs: Mvect<B, M, F>) -> Self::Output {
+        let mut out = Self::Output::default();
+        mv_mul_runner::<RightContractionMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
+        out
+    }
 }
 
 // ----
@@ -326,6 +370,7 @@ impl<
         out
     }
 }
+
 // --------------------------------------------
 impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B0> {
     type Output = Mvect<tarr![U], M, F>;
@@ -375,9 +420,9 @@ mod tests {
 
     #[test]
     fn test_geo_prod() {
-        // (1+2e0+3e1+5e2+7e01+11e02+13e12+17e012)
-        // *(19+23e0+29e1+31e2+37e01+41e02+43e12+47e012)
-        // =−298−1053e0+274e1+122e2+981e01−617e02+238e12+715e012
+        // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
+        // *(19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
+        // =−298 − 1053e0 + 274e1 + 122e2 + 981e01 − 617e02 + 238e12 + 715e012
         let a = 1.0 * E
             + 2.0 * E0
             + 3.0 * E1
@@ -399,6 +444,77 @@ mod tests {
             + 238.0 * E12
             + 715.0 * E012;
         let actual = a * b;
+
+        println!("a = {}", a);
+        println!("b = {}", b);
+        println!("expected = {}", expected);
+        println!("actual   = {}", actual);
+        println!("diff     = {}", expected - actual);
+
+        assert!(expected == actual);
+    }
+    #[test]
+    fn test_outer_prod() {
+        // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
+        // ^(19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
+        // = 19 + 61e0 + 86e1 + 159e01 + 126e2 + 197e02 + 238e12 + 715e012
+        let a = 1.0 * E
+            + 2.0 * E0
+            + 3.0 * E1
+            + 5.0 * E2
+            + 7.0 * E01
+            + 11.0 * E02
+            + 13.0 * E12
+            + 17.0 * E012;
+        let b = 19.0 * E
+            + 23.0 * E0
+            + 29.0 * E1
+            + 31.0 * E2
+            + 37.0 * E01
+            + 41.0 * E02
+            + 43.0 * E12
+            + 47.0 * E012;
+        let expected = 19.0 * E
+            + 61.0 * E0
+            + 86.0 * E1
+            + 159.0 * E01
+            + 126.0 * E2
+            + 197.0 * E02
+            + 238.0 * E12
+            + 715.0 * E012;
+        let actual = a ^ b;
+
+        println!("a = {}", a);
+        println!("b = {}", b);
+        println!("expected = {}", expected);
+        println!("actual   = {}", actual);
+        println!("diff     = {}", expected - actual);
+
+        assert!(expected == actual);
+    }
+    #[test]
+    fn test_inner_prod() {
+        // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
+        // |(19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
+        let a = 1.0 * E
+            + 2.0 * E0
+            + 3.0 * E1
+            + 5.0 * E2
+            + 7.0 * E01
+            + 11.0 * E02
+            + 13.0 * E12
+            + 17.0 * E012;
+        let b = 19.0 * E
+            + 23.0 * E0
+            + 29.0 * E1
+            + 31.0 * E2
+            + 37.0 * E01
+            + 41.0 * E02
+            + 43.0 * E12
+            + 47.0 * E012;
+        // TODO: is this the correct definition of inner product?
+        let expected = (a * b) - (a ^ b);
+        let actual = a | b;
 
         println!("a = {}", a);
         println!("b = {}", b);
