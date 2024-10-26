@@ -1,31 +1,38 @@
 use crate::{
-    basis::Basis,
+    basis::{Basis, ZeroVect},
     metric::Metric,
-    utils::count::{Count, CountOf},
+    mvect::into::IntoBasisSet,
+    traits::Graded,
+    utils::{
+        count::{Count, CountOf},
+        Branch, If,
+    },
+    GeometricObject,
 };
-use typenum::{Bit, Unsigned, B1};
+use typenum::{tarr, Bit, Eq, IsEqual, Unsigned, B1};
 
-use super::ZeroVector;
-
-pub trait Grade {
-    /// Number of basis vectors in the basis.
-    fn grade(self) -> usize;
-}
-impl<U: Unsigned + CountOf<typenum::B1>> Grade for U {
+impl<G: Unsigned> Graded<G> for ZeroVect {
+    type BasisSet = tarr![];
+    #[allow(refining_impl_trait)]
     #[inline(always)]
-    fn grade(self) -> usize {
-        Count::<U, B1>::to_usize()
+    fn graded(self) -> ZeroVect {
+        self
     }
 }
-impl<U: Unsigned + CountOf<typenum::B1>, M: Metric, S: Bit> Grade for Basis<U, M, S> {
+impl<G: Unsigned, U: Unsigned, M: Metric, S: Bit> Graded<G> for Basis<U, M, S>
+where
+    U: CountOf<
+        B1,
+        Count: IsEqual<
+            G,
+            Output: Branch<Basis<U, M, S>, ZeroVect, Output: GeometricObject + IntoBasisSet>,
+        >,
+    >,
+{
+    type BasisSet = <If<Eq<Count<U, B1>, G>, Basis<U, M, S>, ZeroVect> as IntoBasisSet>::Output;
+    #[allow(refining_impl_trait)]
     #[inline(always)]
-    fn grade(self) -> usize {
-        Count::<U, B1>::to_usize()
-    }
-}
-impl Grade for ZeroVector {
-    #[inline(always)]
-    fn grade(self) -> usize {
-        0
+    fn graded(self) -> If<Eq<Count<U, B1>, G>, Basis<U, M, S>, ZeroVect> {
+        If::<Eq<Count<U, B1>, G>, Basis<U, M, S>, ZeroVect>::default()
     }
 }

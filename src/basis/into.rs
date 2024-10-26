@@ -1,4 +1,4 @@
-use super::{Basis, ZeroVector};
+use super::{Basis, ZeroVect};
 use crate::metric::Metric;
 use typenum::{Bit, Len, Unsigned, B0, B1, N1, P1, Z0};
 
@@ -22,9 +22,9 @@ where
 }
 impl<U: Unsigned + Len, M: Metric> IntoBasis<U, M> for Z0
 where
-    Self: Into<ZeroVector>,
+    Self: Into<ZeroVect>,
 {
-    type Output = ZeroVector;
+    type Output = ZeroVect;
 }
 impl<U: Unsigned + Len, M: Metric> IntoBasis<U, M> for P1
 where
@@ -46,7 +46,7 @@ impl<U: Unsigned, M: Metric, S: Bit> From<S> for Basis<U, M, S> {
         Self::default()
     }
 }
-impl From<Z0> for ZeroVector {
+impl From<Z0> for ZeroVect {
     // Zero is Zero
     fn from(_: Z0) -> Self {
         Self::default()
@@ -78,6 +78,6 @@ mod tests {
         assert_type_eq!(Basis<U2, M, B1>, <B1 as IntoBasis<U2, M>>::Output);
         assert_type_eq!(Basis<U2, M, B0>, <P1 as IntoBasis<U2, M>>::Output);
         assert_type_eq!(Basis<U2, M, B1>, <N1 as IntoBasis<U2, M>>::Output);
-        assert_type_eq!(ZeroVector, <Z0 as IntoBasis<U2, M>>::Output);
+        assert_type_eq!(ZeroVect, <Z0 as IntoBasis<U2, M>>::Output);
     }
 }

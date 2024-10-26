@@ -1,5 +1,5 @@
 use crate::{
-    basis::{Basis, ZeroVector},
+    basis::{Basis, ZeroVect},
     field::Field,
     metric::Metric,
     utils::contains::{Contains, IdxOf, IndexOf},
@@ -134,7 +134,7 @@ where
 pub trait CartCollector<F: Field, OUT: TypeArray> {
     fn collect(out: &mut [F], left: &F, right: &F);
 }
-impl<F: Field, OUT: TypeArray> CartCollector<F, OUT> for ZeroVector {
+impl<F: Field, OUT: TypeArray> CartCollector<F, OUT> for ZeroVect {
     fn collect(_out: &mut [F], _left: &F, _right: &F) {}
 }
 impl<U: Unsigned, M: Metric, F: Field, OUT: TypeArray + IndexOf<U>> CartCollector<F, OUT>

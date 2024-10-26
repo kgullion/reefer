@@ -16,6 +16,10 @@ pub struct Mvect<BS: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field
     GenericArray<F, Length<BS>>,
     PhantomData<M>,
 );
+impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field + Copy> Copy for Mvect<A, M, F> where
+    GenericArray<F, Length<A>>: Copy
+{
+}
 
 impl<BS: BasisSet<M> + Len<Output: Unsigned + ArrayLength>, M: Metric, F: Field> Mvect<BS, M, F> {
     /// Create a new multivector from a GenericArray of field elements.

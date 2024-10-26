@@ -155,7 +155,7 @@ fn mv_mul_runner<
     <M as MvMulRun<K, F, <M as MvMulType<K, A, B>>::Output, A, B>>::mv_mul(out, left, right)
 }
 // ----
-// Mul - multiply two multivectors 🎉
+// Mul - geometric product of two multivectors
 pub struct GeoProdMarker;
 impl<L: Unsigned, R: Unsigned> MvMulMarker<L, R> for GeoProdMarker {
     // every element of the cartesian product of L and R is in the result

@@ -1,7 +1,7 @@
 #![allow(unused)]
 use crate::{
     basis::into::IntoBasis,
-    basis::{Basis, ZeroVector},
+    basis::{Basis, ZeroVect},
     metric::Metric,
     traits::{Dual, Undual},
     utils::parity::{ReversePar, ReverseParity, SwapPar, SwapParity},
@@ -53,8 +53,8 @@ impl<
         Self::Output::default()
     }
 }
-impl Dual for ZeroVector {
-    type Output = ZeroVector;
+impl Dual for ZeroVect {
+    type Output = ZeroVect;
     #[inline(always)]
     fn dual(self) -> Self::Output {
         Self::Output::default()
@@ -89,8 +89,8 @@ where
         Self::Output::default()
     }
 }
-impl Undual for ZeroVector {
-    type Output = ZeroVector;
+impl Undual for ZeroVect {
+    type Output = ZeroVect;
     #[inline(always)]
     fn undual(self) -> Self::Output {
         Self::Output::default()

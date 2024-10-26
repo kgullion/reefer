@@ -4,10 +4,11 @@ use crate::utils::{
 };
 use core::ops::BitAnd;
 use typenum::{
-    tarr, ATerm, And, Bit, Integer, IsNotEqual, NotEq, TArr, UInt, Unsigned, B0, B1, N1, P1, U0, Z0,
+    tarr, ATerm, And, Bit, Integer, IsNotEqual, NotEq, TArr, TypeArray, UInt, Unsigned, B0, B1, N1,
+    P1, U0, Z0,
 };
 
-pub trait Metric {
+pub trait Metric: TypeArray + Copy + Clone {
     type Psuedoscalar: Unsigned;
     type PosMask: Unsigned;
     type NegMask: Unsigned;

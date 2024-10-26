@@ -1,9 +1,9 @@
-use super::{Basis, ZeroVector};
+use super::{Basis, ZeroVect};
 use crate::metric::Metric;
 use core::marker::PhantomData;
 use typenum::{Bit, Unsigned};
 
-impl Default for ZeroVector {
+impl Default for ZeroVect {
     #[inline(always)]
     fn default() -> Self {
         Self

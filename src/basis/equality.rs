@@ -1,26 +1,26 @@
-use super::{Basis, ZeroVector};
+use super::{Basis, ZeroVect};
 use crate::metric::Metric;
 use core::ops::BitAnd;
 use typenum::{And, Bit, Eq, IsEqual, Unsigned, B0, B1};
 
 // 0==0
-impl IsEqual<ZeroVector> for ZeroVector {
+impl IsEqual<ZeroVect> for ZeroVect {
     type Output = B1;
-    fn is_equal(self, _: ZeroVector) -> Self::Output {
+    fn is_equal(self, _: ZeroVect) -> Self::Output {
         Self::Output::default()
     }
 }
 // 0!=B
-impl<U: Unsigned, M: Metric, S: Bit> IsEqual<Basis<U, M, S>> for ZeroVector {
+impl<U: Unsigned, M: Metric, S: Bit> IsEqual<Basis<U, M, S>> for ZeroVect {
     type Output = B0;
     fn is_equal(self, _: Basis<U, M, S>) -> Self::Output {
         Self::Output::default()
     }
 }
 // B!=0
-impl<U: Unsigned, M: Metric, S: Bit> IsEqual<ZeroVector> for Basis<U, M, S> {
+impl<U: Unsigned, M: Metric, S: Bit> IsEqual<ZeroVect> for Basis<U, M, S> {
     type Output = B0;
-    fn is_equal(self, _: ZeroVector) -> Self::Output {
+    fn is_equal(self, _: ZeroVect) -> Self::Output {
         Self::Output::default()
     }
 }
@@ -42,10 +42,10 @@ where
 }
 
 // Eq & PartialEq
-impl core::cmp::Eq for ZeroVector {}
+impl core::cmp::Eq for ZeroVect {}
 impl<U: Unsigned, M: Metric, S: Bit> core::cmp::Eq for Basis<U, M, S> where Self: IsEqual<Self> {}
 
-impl<R> PartialEq<R> for ZeroVector
+impl<R> PartialEq<R> for ZeroVect
 where
     Self: IsEqual<R>,
 {
@@ -71,7 +71,7 @@ mod tests {
     use typenum::{assert_type_eq, tarr, U0, U1, U10, U2, U3, U4, U5, U6, U7, U8, U9};
     #[test]
     fn test_is_equal() {
-        assert_type_eq!(ZeroVector, ZeroVector);
+        assert_type_eq!(ZeroVect, ZeroVect);
         assert_type_eq!(Basis<U0, tarr![], B0>, Basis<U0, tarr![], B0>);
         // TODO: Add more tests
     }

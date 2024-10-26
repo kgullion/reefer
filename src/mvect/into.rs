@@ -1,7 +1,7 @@
-use typenum::{tarr, Bit, Unsigned, B0, B1};
+use typenum::{tarr, Bit, TypeArray, Unsigned, B0, B1};
 
 use crate::{
-    basis::{Basis, ZeroVector},
+    basis::{Basis, ZeroVect},
     field::Field,
     metric::Metric,
     mvect::Mvect,
@@ -10,9 +10,9 @@ use crate::{
 // --------------------------------------------
 // IntoBasisSet - convert a Basis or ZeroVector type into a BasisSet
 pub trait IntoBasisSet {
-    type Output;
+    type Output: TypeArray;
 }
-impl IntoBasisSet for ZeroVector {
+impl IntoBasisSet for ZeroVect {
     type Output = tarr![];
 }
 impl<U: Unsigned, M: Metric, S: Bit> IntoBasisSet for Basis<U, M, S> {
