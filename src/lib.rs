@@ -27,6 +27,7 @@ impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> GeometricOb
 //     Copy              // ☑ ☑
 //     + Clone           // ☑ ☑
 //     + Default         // ☑ ☑
+//     + Display         // ☑ ☑
 //     + PartialEq       // ☑ ☑
 //     + Index<Basis>    // ☐ ☐
 //     + IndexMut<Basis> // ☒ ☐
@@ -34,6 +35,7 @@ impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> GeometricOb
 //     + Sub             // ☐ ☑ Subtraction
 //     + BitXor          // ☑ ☑ Outer Product
 //     + Mul             // ☑ ☑ Geometric Product
+//     + Mul<F>          // ☑ ☑ Field Product
 //     + Commutator      // ☐ ☑ Commutator
 //     + ScalarProduct   // ☐ ☑ Scalar Product
 //     + FatDot          // ☐ ☑ "Fat" Dot Product
