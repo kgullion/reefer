@@ -1,6 +1,7 @@
 pub mod add;
 pub mod basis_set;
 pub mod default;
+pub mod display;
 pub mod equality;
 pub mod into;
 pub mod mul;
@@ -11,7 +12,7 @@ use generic_array::{ArrayLength, GenericArray};
 use typenum::{Len, Length, Unsigned};
 
 /// multivector
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Mvect<BS: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field>(
     GenericArray<F, Length<BS>>,
     PhantomData<M>,
