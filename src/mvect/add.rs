@@ -67,12 +67,12 @@ struct MvSub;
 // Collect the results of subtracting two multivectors
 impl<F: Field> Collector<F, &mut [F]> for MvSub {
     fn collect_both<'a>(out: &'a mut [F], left: &F, right: &F) -> &'a mut [F] {
-        out[0] -= left.clone();
+        out[0] += left.clone();
         out[0] -= right.clone();
         &mut out[1..]
     }
     fn collect_just_left<'a>(out: &'a mut [F], left: &F) -> &'a mut [F] {
-        out[0] -= left.clone();
+        out[0] += left.clone();
         &mut out[1..]
     }
     fn collect_just_right<'a>(out: &'a mut [F], right: &F) -> &'a mut [F] {
