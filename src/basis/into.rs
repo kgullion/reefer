@@ -1,5 +1,7 @@
-use super::{Basis, ZeroVect};
-use crate::metric::Metric;
+use crate::{
+    basis::{Basis, ZeroVect},
+    metric::Metric,
+};
 use typenum::{Bit, Len, Unsigned, B0, B1, N1, P1, Z0};
 
 /// Helper trait functionality for converting B0, B1, P1, N1, Z0 to the correct Basis

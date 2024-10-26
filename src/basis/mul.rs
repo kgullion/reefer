@@ -1,5 +1,5 @@
-use super::{into::IntoBasis, Basis, ZeroVect};
 use crate::{
+    basis::{into::IntoBasis, Basis, ZeroVect},
     metric::{Metric, TritMul, TritXor},
     // traits::Inverse,
     utils::{

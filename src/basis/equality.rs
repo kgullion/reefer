@@ -1,5 +1,7 @@
-use super::{Basis, ZeroVect};
-use crate::metric::Metric;
+use crate::{
+    basis::{Basis, ZeroVect},
+    metric::Metric,
+};
 use core::ops::BitAnd;
 use typenum::{And, Bit, Eq, IsEqual, Unsigned, B0, B1};
 

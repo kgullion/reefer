@@ -1,5 +1,7 @@
-use super::{Basis, ZeroVect};
-use crate::metric::Metric;
+use crate::{
+    basis::{Basis, ZeroVect},
+    metric::Metric,
+};
 use core::marker::PhantomData;
 use typenum::{Bit, Unsigned};
 
