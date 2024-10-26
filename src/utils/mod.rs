@@ -2,8 +2,8 @@ pub mod contains;
 pub mod count;
 pub mod parity;
 pub mod typeset;
-
-use typenum::{tarr, Bit, TArr, TypeArray, B0, B1};
+use crate::ta;
+use typenum::{Bit, TypeArray, B0, B1};
 
 // If-Then-Else
 pub type If<Cond, Then, Else> = <Cond as Branch<Then, Else>>::Output;
@@ -24,18 +24,18 @@ pub type Flat<A> = <A as Flatten>::Output;
 pub trait Flatten {
     type Output: TypeArray;
 }
-impl Flatten for tarr![] {
+impl Flatten for ta![] {
     // flat([]) = []
-    type Output = tarr![];
+    type Output = ta![];
 }
-impl<B: Flatten> Flatten for TArr<tarr![], B> {
+impl<B: Flatten> Flatten for ta![ta![] | B] {
     // flat([[] | B]) = flat(B)
     type Output = B::Output;
 }
-impl<L, A, B> Flatten for TArr<TArr<L, A>, B>
+impl<L, A, B> Flatten for ta![ta![L | A] | B]
 where
-    TArr<A, B>: Flatten,
+    ta![A | B]: Flatten,
 {
     // flat([[L|A] | B]) = [L, flat([A | B])]
-    type Output = TArr<L, <TArr<A, B> as Flatten>::Output>;
+    type Output = ta![L, <ta![A | B] as Flatten>::Output];
 }

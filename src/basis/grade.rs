@@ -2,6 +2,7 @@ use crate::{
     basis::{Basis, ZeroVect},
     metric::Metric,
     mvect::into::IntoBasisSet,
+    ta,
     traits::Graded,
     utils::{
         count::{Count, CountOf},
@@ -9,10 +10,10 @@ use crate::{
     },
     GeometricObject,
 };
-use typenum::{tarr, Bit, Eq, IsEqual, Unsigned, B1};
+use typenum::{Bit, Eq, IsEqual, Unsigned, B1};
 
 impl<G: Unsigned> Graded<G> for ZeroVect {
-    type BasisSet = tarr![];
+    type BasisSet = ta![];
     #[allow(refining_impl_trait)]
     #[inline(always)]
     fn graded(self) -> ZeroVect {

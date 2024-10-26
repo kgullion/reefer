@@ -3,10 +3,11 @@ use crate::{
     field::Field,
     metric::Metric,
     mvect::{basis_set::BasisSet, Mvect},
+    ta,
 };
 use core::fmt;
 use generic_array::ArrayLength;
-use typenum::{tarr, Bit, Len, TArr, UInt, Unsigned, B0, U0};
+use typenum::{Bit, Len, TArr, UInt, Unsigned, B0, U0};
 
 // Display for Mvect
 impl<
@@ -23,7 +24,7 @@ impl<
 trait MvDisplayHead<M: Metric, F: Field> {
     fn fmt(data: &[F], f: &mut fmt::Formatter) -> fmt::Result;
 }
-impl<M: Metric, F: Field + fmt::Display> MvDisplayHead<M, F> for tarr![] {
+impl<M: Metric, F: Field + fmt::Display> MvDisplayHead<M, F> for ta![] {
     #[inline(always)]
     fn fmt(_data: &[F], f: &mut fmt::Formatter) -> fmt::Result {
         // no head found, must be 0
@@ -31,9 +32,9 @@ impl<M: Metric, F: Field + fmt::Display> MvDisplayHead<M, F> for tarr![] {
     }
 }
 impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field + fmt::Display>
-    MvDisplayHead<M, F> for TArr<U0, A>
+    MvDisplayHead<M, F> for ta![U0 | A]
 where
-    TArr<U0, A>: BasisSet<M>,
+    ta![U0 | A]: BasisSet<M>,
     A: MvDisplayHead<M, F> + MvDisplayTail<M, F>,
 {
     #[inline(always)]
@@ -78,7 +79,7 @@ where
 trait MvDisplayTail<M: Metric, F: Field> {
     fn fmt(data: &[F], f: &mut fmt::Formatter) -> fmt::Result;
 }
-impl<M: Metric, F: Field> MvDisplayTail<M, F> for tarr![] {
+impl<M: Metric, F: Field> MvDisplayTail<M, F> for ta![] {
     #[inline(always)]
     fn fmt(_data: &[F], _f: &mut fmt::Formatter) -> fmt::Result {
         Ok(())
@@ -89,9 +90,9 @@ impl<
         A: BasisSet<M> + Len<Output: ArrayLength> + MvDisplayTail<M, F>,
         M: Metric,
         F: Field + fmt::Display,
-    > MvDisplayTail<M, F> for TArr<L, A>
+    > MvDisplayTail<M, F> for ta![L | A]
 where
-    TArr<L, A>: BasisSet<M>,
+    ta![L | A]: BasisSet<M>,
 {
     #[inline(always)]
     fn fmt(data: &[F], f: &mut fmt::Formatter) -> fmt::Result {

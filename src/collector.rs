@@ -2,9 +2,10 @@ use crate::{
     basis::{Basis, ZeroVect},
     field::Field,
     metric::Metric,
+    ta,
     utils::contains::{Contains, IdxOf, IndexOf},
 };
-use typenum::{tarr, Bit, Cmp, Compare, Equal, Greater, Less, TArr, TypeArray, Unsigned, B0, B1};
+use typenum::{Bit, Cmp, Compare, Equal, Greater, Less, TypeArray, Unsigned, B0, B1};
 
 /// Iterates the Left and Right sorted TypeArrays, and calls the appropriate Collector fn
 /// based on if the current type exists in both arrays, just the left array, or just the right array.
@@ -35,20 +36,20 @@ pub trait Collector<T, OUT> {
     }
 }
 // we've reached the end of both arrays
-impl<CO: Collector<F, OUT>, OUT, F: Field> CollectInto<F, CO, OUT, tarr![], tarr![]> for F {
+impl<CO: Collector<F, OUT>, OUT, F: Field> CollectInto<F, CO, OUT, ta![], ta![]> for F {
     fn collect(out: OUT, _left: &[F], _right: &[F]) -> OUT {
         out
     }
 }
 // we've reached the end of the left array
 impl<F: Field, CO: Collector<F, OUT>, OUT, R, B: TypeArray>
-    CollectInto<F, CO, OUT, tarr![], TArr<R, B>> for F
+    CollectInto<F, CO, OUT, ta![], ta![R | B]> for F
 where
-    F: CollectInto<F, CO, OUT, tarr![], B>,
+    F: CollectInto<F, CO, OUT, ta![], B>,
 {
     fn collect(out: OUT, left: &[F], right: &[F]) -> OUT {
         // iterate right array
-        <F as CollectInto<F, CO, OUT, tarr![], B>>::collect(
+        <F as CollectInto<F, CO, OUT, ta![], B>>::collect(
             // collect the right array at the current position
             CO::collect_just_right(out, &right[0]),
             left,
@@ -58,13 +59,13 @@ where
 }
 // we've reached the end of the right array
 impl<F: Field, CO: Collector<F, OUT>, OUT, L, A: TypeArray>
-    CollectInto<F, CO, OUT, TArr<L, A>, tarr![]> for F
+    CollectInto<F, CO, OUT, ta![L | A], ta![]> for F
 where
-    F: CollectInto<F, CO, OUT, A, tarr![]>,
+    F: CollectInto<F, CO, OUT, A, ta![]>,
 {
     fn collect(out: OUT, left: &[F], right: &[F]) -> OUT {
         // iterate left array
-        <F as CollectInto<F, CO, OUT, A, tarr![]>>::collect(
+        <F as CollectInto<F, CO, OUT, A, ta![]>>::collect(
             // collect the left array at the current position
             CO::collect_just_left(out, &left[0]),
             &left[1..],
@@ -74,24 +75,24 @@ where
 }
 // we're in the middle of both arrays, need to check L<R, L>R, L=R and call the appropriate collect fn
 impl<F: Field, CO: Collector<F, OUT>, OUT, L, R, A: TypeArray, B: TypeArray>
-    CollectInto<F, CO, OUT, TArr<L, A>, TArr<R, B>> for F
+    CollectInto<F, CO, OUT, ta![L | A], ta![R | B]> for F
 where
-    L: Cmp<R, Output: CollectInto<F, CO, OUT, TArr<L, A>, TArr<R, B>>>,
+    L: Cmp<R, Output: CollectInto<F, CO, OUT, ta![L | A], ta![R | B]>>,
 {
     fn collect(out: OUT, left: &[F], right: &[F]) -> OUT {
-        <Compare<L, R> as CollectInto<F, CO, OUT, TArr<L, A>, TArr<R, B>>>::collect(
+        <Compare<L, R> as CollectInto<F, CO, OUT, ta![L | A], ta![R | B]>>::collect(
             out, left, right,
         )
     }
 }
 // L<R, collect the left array at the current position
 impl<F: Field, CO: Collector<F, OUT>, OUT, L, R, A: TypeArray, B: TypeArray>
-    CollectInto<F, CO, OUT, TArr<L, A>, TArr<R, B>> for Less
+    CollectInto<F, CO, OUT, ta![L | A], ta![R | B]> for Less
 where
-    F: CollectInto<F, CO, OUT, A, TArr<R, B>>,
+    F: CollectInto<F, CO, OUT, A, ta![R | B]>,
 {
     fn collect(out: OUT, left: &[F], right: &[F]) -> OUT {
-        <F as CollectInto<F, CO, OUT, A, TArr<R, B>>>::collect(
+        <F as CollectInto<F, CO, OUT, A, ta![R | B]>>::collect(
             CO::collect_just_left(out, &left[0]),
             &left[1..],
             right,
@@ -100,12 +101,12 @@ where
 }
 // L>R, collect the right array at the current position
 impl<F: Field, CO: Collector<F, OUT>, OUT, L, R, A: TypeArray, B: TypeArray>
-    CollectInto<F, CO, OUT, TArr<L, A>, TArr<R, B>> for Greater
+    CollectInto<F, CO, OUT, ta![L | A], ta![R | B]> for Greater
 where
-    F: CollectInto<F, CO, OUT, TArr<R, B>, A>,
+    F: CollectInto<F, CO, OUT, ta![R | B], A>,
 {
     fn collect(out: OUT, left: &[F], right: &[F]) -> OUT {
-        <F as CollectInto<F, CO, OUT, TArr<R, B>, A>>::collect(
+        <F as CollectInto<F, CO, OUT, ta![R | B], A>>::collect(
             CO::collect_just_right(out, &right[0]),
             left,
             &right[1..],
@@ -114,7 +115,7 @@ where
 }
 // L=R, collect both arrays at the current position
 impl<F: Field, CO: Collector<F, OUT>, OUT, L, R, A: TypeArray, B: TypeArray>
-    CollectInto<F, CO, OUT, TArr<L, A>, TArr<R, B>> for Equal
+    CollectInto<F, CO, OUT, ta![L | A], ta![R | B]> for Equal
 where
     F: CollectInto<F, CO, OUT, A, B>,
 {

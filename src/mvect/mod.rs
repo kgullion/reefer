@@ -40,12 +40,13 @@ impl<BS: BasisSet<M> + Len<Output: Unsigned + ArrayLength>, M: Metric, F: Field>
 mod tests {
     #![allow(unused)]
     use crate::basis::Basis;
+    use crate::ta;
 
     use super::*;
     use into::IntoMv;
     use typenum::{tarr, B0, P1, U0, U1, U2, U3, U4, U5, U6, U7, Z0};
 
-    type Metric = tarr![Z0, P1, P1];
+    type Metric = ta![Z0, P1, P1];
     type Pga2d<U> = Basis<U, Metric, B0>;
 
     type Scalar = Pga2d<U0>;
@@ -59,8 +60,8 @@ mod tests {
 
     #[test]
     fn test_default() {
-        type M = tarr![Z0, P1, P1];
-        type BS = <tarr![U0, U1, U2, U4] as BasisSet<M>>::Output;
+        type M = ta![Z0, P1, P1];
+        type BS = <ta![U0, U1, U2, U4] as BasisSet<M>>::Output;
         let mv = Mvect::<BS, M, f32>::default();
         assert_eq!(mv.len(), 4);
         for &elem in mv.0.iter() {
@@ -70,7 +71,7 @@ mod tests {
 
     #[test]
     fn test_into_mv() {
-        let expected = Mvect::<tarr![U3], Metric, f32>::new(GenericArray::<f32, U1>::from([1.0]));
+        let expected = Mvect::<ta![U3], Metric, f32>::new(GenericArray::<f32, U1>::from([1.0]));
         let actual = <E01 as IntoMv<f32>>::into_mv();
         assert!(expected == actual);
     }

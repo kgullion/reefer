@@ -69,12 +69,13 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ta;
     #[allow(unused_imports)]
     use typenum::{assert_type_eq, tarr, U0, U1, U10, U2, U3, U4, U5, U6, U7, U8, U9};
     #[test]
     fn test_is_equal() {
         assert_type_eq!(ZeroVect, ZeroVect);
-        assert_type_eq!(Basis<U0, tarr![], B0>, Basis<U0, tarr![], B0>);
+        assert_type_eq!(Basis<U0, ta![], B0>, Basis<U0, ta![], B0>);
         // TODO: Add more tests
     }
 }

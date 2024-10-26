@@ -1,11 +1,13 @@
-use crate::utils::{
-    contains::{At, Get},
-    count::{Count, CountOf},
+use crate::{
+    ta,
+    utils::{
+        contains::{At, Get},
+        count::{Count, CountOf},
+    },
 };
 use core::ops::BitAnd;
 use typenum::{
-    tarr, And, Bit, Integer, IsNotEqual, NotEq, TArr, TypeArray, UInt, Unsigned, B0, B1, N1, P1,
-    U0, Z0,
+    And, Bit, Integer, IsNotEqual, NotEq, TypeArray, UInt, Unsigned, B0, B1, N1, P1, U0, Z0,
 };
 
 pub trait Metric: TypeArray + Copy + Clone {
@@ -14,25 +16,25 @@ pub trait Metric: TypeArray + Copy + Clone {
     type NegMask: Unsigned;
     type ZeroMask: Unsigned;
 }
-impl Metric for tarr![] {
+impl Metric for ta![] {
     type Psuedoscalar = U0;
     type PosMask = U0;
     type NegMask = U0;
     type ZeroMask = U0;
 }
-impl<TL: Metric> Metric for TArr<P1, TL> {
+impl<TL: Metric> Metric for ta![P1 | TL] {
     type Psuedoscalar = UInt<TL::Psuedoscalar, B1>;
     type PosMask = UInt<TL::PosMask, B1>;
     type NegMask = UInt<TL::NegMask, B0>;
     type ZeroMask = UInt<TL::ZeroMask, B0>;
 }
-impl<TL: Metric> Metric for TArr<N1, TL> {
+impl<TL: Metric> Metric for ta![N1 | TL] {
     type Psuedoscalar = UInt<TL::Psuedoscalar, B1>;
     type PosMask = UInt<TL::PosMask, B0>;
     type NegMask = UInt<TL::NegMask, B1>;
     type ZeroMask = UInt<TL::ZeroMask, B0>;
 }
-impl<TL: Metric> Metric for TArr<Z0, TL> {
+impl<TL: Metric> Metric for ta![Z0 | TL] {
     type Psuedoscalar = UInt<TL::Psuedoscalar, B1>;
     type PosMask = UInt<TL::PosMask, B0>;
     type NegMask = UInt<TL::NegMask, B0>;
@@ -77,25 +79,25 @@ pub type TritProd<M, L, R> = <M as TritMul<L, R>>::Output;
 impl<L: Unsigned, R: Unsigned, M: Metric> TritMul<L, R> for M
 where
     L: BitAnd<R, Output: DegenCheck<M> + MaskPar<M>>,
-    tarr![IsDegen<M, And<L, R>>, MaskParity<M, And<L, R>>]: TritMulInner,
+    ta![IsDegen<M, And<L, R>>, MaskParity<M, And<L, R>>]: TritMulInner,
 {
     // Output = 0 if degenerate, -1 if odd parity, +1 if even parity
-    type Output = <tarr![IsDegen<M, And<L, R>>, MaskParity<M, And<L, R>>] as TritMulInner>::Output;
+    type Output = <ta![IsDegen<M, And<L, R>>, MaskParity<M, And<L, R>>] as TritMulInner>::Output;
 }
 
 pub trait TritMulInner {
     type Output: Trit;
 } //              is_degen? ↰   ↱ parity
-impl TritMulInner for tarr![B0, B0] {
+impl TritMulInner for ta![B0, B0] {
     type Output = P1;
 }
-impl TritMulInner for tarr![B0, B1] {
+impl TritMulInner for ta![B0, B1] {
     type Output = N1;
 }
-impl TritMulInner for tarr![B1, B0] {
+impl TritMulInner for ta![B1, B0] {
     type Output = Z0;
 }
-impl TritMulInner for tarr![B1, B1] {
+impl TritMulInner for ta![B1, B1] {
     type Output = Z0;
 }
 

@@ -4,6 +4,7 @@ use crate::{
     field::Field,
     metric::Metric,
     mvect::{basis_set::BasisSet, into::IntoBasisSet, Mvect},
+    ta,
     traits::{Commutator, FatDot, ScalarProduct},
     utils::{
         parity::{ReversePar, ReverseParity},
@@ -15,8 +16,8 @@ use core::marker::PhantomData;
 use core::ops::{Add, BitAnd, BitOr, BitXor, Mul};
 use generic_array::{ArrayLength, GenericArray};
 use typenum::{
-    tarr, And, Bit, Eq, IsEqual, IsNotEqual, Len, NotEq, Or, Prod, TArr, TypeArray, UInt, Unsigned,
-    Xor, B0, B1, U0,
+    And, Bit, Eq, IsEqual, IsNotEqual, Len, NotEq, Or, Prod,  TypeArray, UInt, Unsigned, Xor,
+    B0, B1, U0,
 };
 
 // --------------------------------------------
@@ -30,9 +31,7 @@ pub trait MvMulMarker<L: Unsigned, R: Unsigned>: Sized {
 pub trait MvMulRun<K, F, OUT, A: BasisSet<Self>, B: BasisSet<Self>>: Metric + Sized {
     fn mv_mul(out: &mut [F], left: &[F], right: &[F]);
 }
-impl<B: BasisSet<M>, OUT: BasisSet<M>, M: Metric, F: Field, K> MvMulRun<K, F, OUT, tarr![], B>
-    for M
-{
+impl<B: BasisSet<M>, OUT: BasisSet<M>, M: Metric, F: Field, K> MvMulRun<K, F, OUT, ta![], B> for M {
     fn mv_mul(_out: &mut [F], _left: &[F], _right: &[F]) {}
 }
 impl<
@@ -43,9 +42,9 @@ impl<
         M: Metric + MvMulRunInner<K, F, OUT, L, B> + MvMulRun<K, F, OUT, A, B>,
         F: Field,
         K,
-    > MvMulRun<K, F, OUT, TArr<L, A>, B> for M
+    > MvMulRun<K, F, OUT, ta![L |  A], B> for M
 where
-    TArr<L, A>: BasisSet<M>,
+    ta![L |  A]: BasisSet<M>,
 {
     fn mv_mul(out: &mut [F], left: &[F], right: &[F]) {
         <M as MvMulRunInner<K, F, OUT, L, B>>::mv_mul_inner(out, &left[0], right);
@@ -56,7 +55,7 @@ where
 pub trait MvMulRunInner<K, F, OUT, L, B>: Metric {
     fn mv_mul_inner(out: &mut [F], left: &F, right: &[F]);
 }
-impl<L: Unsigned, OUT: BasisSet<M>, M: Metric, F: Field, K> MvMulRunInner<K, F, OUT, L, tarr![]>
+impl<L: Unsigned, OUT: BasisSet<M>, M: Metric, F: Field, K> MvMulRunInner<K, F, OUT, L, ta![]>
     for M
 {
     fn mv_mul_inner(_out: &mut [F], _left: &F, _right: &[F]) {}
@@ -69,7 +68,7 @@ impl<
         M: Metric + MvMulRunInner<K, F, OUT, L, B>,
         F: Field,
         K: MvMulMarker<L, R>,
-    > MvMulRunInner<K, F, OUT, L, TArr<R, B>> for M
+    > MvMulRunInner<K, F, OUT, L, ta![R |  B]> for M
 where
     Basis<L, M, B0>: Mul<Basis<R, M, B0>, Output: CartCollector<F, OUT>>,
 {
@@ -88,8 +87,8 @@ pub trait MvMulType<K, A: BasisSet<Self>, B: BasisSet<Self>>: Metric + Sized {
     type Output: BasisSet<Self>;
 }
 // 0 * B = 0
-impl<B: BasisSet<M>, M: Metric, K> MvMulType<K, tarr![], B> for M {
-    type Output = tarr![];
+impl<B: BasisSet<M>, M: Metric, K> MvMulType<K, ta![], B> for M {
+    type Output = ta![];
 }
 // [L|A] * B = A*B + L*B
 impl<
@@ -98,9 +97,9 @@ impl<
         B: BasisSet<M> + Len<Output: ArrayLength>,
         M: Metric + MvMulType<K, A, B> + MvMulTypeInner<K, L, B>,
         K,
-    > MvMulType<K, TArr<L, A>, B> for M
+    > MvMulType<K, ta![L |  A], B> for M
 where
-    TArr<L, A>: BasisSet<M>,
+    ta![L |  A]: BasisSet<M>,
     <M as MvMulType<K, A, B>>::Output:
         UnionMerge<<M as MvMulTypeInner<K, L, B>>::Output, Output: BasisSet<M>>,
     <M as MvMulTypeInner<K, L, B>>::Output: BasisSet<M>,
@@ -112,25 +111,25 @@ pub trait MvMulTypeInner<K, L: Unsigned, B: TypeArray> {
     type Output: TypeArray;
 }
 // L*0 = 0
-impl<L: Unsigned, M: Metric, K> MvMulTypeInner<K, L, tarr![]> for M {
-    type Output = tarr![];
+impl<L: Unsigned, M: Metric, K> MvMulTypeInner<K, L, ta![]> for M {
+    type Output = ta![];
 }
 // L*[R|B] = L*R + L*B
 impl<L: Unsigned, R: Unsigned, B: BasisSet<M>, M: Metric + MvMulTypeInner<K, L, B>, K>
-    MvMulTypeInner<K, L, TArr<R, B>> for M
+    MvMulTypeInner<K, L, ta![R |  B]> for M
 where
     K: MvMulMarker<L, R>,
     Basis<L, M, B0>: Mul<Basis<R, M, B0>, Output: IntoBasisSet<Output: BasisSet<M>>>,
     <K as MvMulMarker<L, R>>::Output: Branch<
         <Prod<Basis<L, M, B0>, Basis<R, M, B0>> as IntoBasisSet>::Output,
-        tarr![],
+        ta![],
         Output: TypeArray,
     >,
     <M as MvMulTypeInner<K, L, B>>::Output: UnionMerge<
         If<
             <K as MvMulMarker<L, R>>::Output,
             <Prod<Basis<L, M, B0>, Basis<R, M, B0>> as IntoBasisSet>::Output,
-            tarr![],
+            ta![],
         >,
     >,
 {
@@ -139,7 +138,7 @@ where
         If<
             <K as MvMulMarker<L, R>>::Output,
             <Prod<Basis<L, M, B0>, Basis<R, M, B0>> as IntoBasisSet>::Output,
-            tarr![],
+            ta![],
         >,
     >;
 }
@@ -373,7 +372,7 @@ impl<
 
 // --------------------------------------------
 impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B0> {
-    type Output = Mvect<tarr![U], M, F>;
+    type Output = Mvect<ta![U], M, F>;
     fn mul(self, rhs: F) -> Self::Output {
         let mut out = GenericArray::default();
         out[0] = rhs;
@@ -381,7 +380,7 @@ impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B0> {
     }
 }
 impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B1> {
-    type Output = Mvect<tarr![U], M, F>;
+    type Output = Mvect<ta![U], M, F>;
     fn mul(self, rhs: F) -> Self::Output {
         let mut out = GenericArray::default();
         out[0] = -rhs;
@@ -406,7 +405,7 @@ mod tests {
     use super::*;
     use typenum::{B0, P1, U0, U1, U2, U3, U4, U5, U6, U7, Z0};
 
-    type Metric = tarr![Z0, P1, P1];
+    type Metric = ta![Z0, P1, P1];
     type Pga2d<U> = Basis<U, Metric, B0>;
 
     const E: Pga2d<U0> = Pga2d::<U0>::new();

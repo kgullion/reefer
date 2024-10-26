@@ -1,5 +1,6 @@
+use crate::ta;
 use core::ops::{Add, BitOr, Sub};
-use typenum::{tarr, Bit, Eq, IsEqual, Or, Sub1, Sum, TArr, UInt, Unsigned, B0, B1, U0};
+use typenum::{Bit, Eq, IsEqual, Or, Sub1, Sum, UInt, Unsigned, B0, B1, U0};
 
 pub type IdxOf<A, V> = <A as IndexOf<V>>::Idx;
 pub type Contains<A, V> = <A as IndexOf<V>>::Found;
@@ -9,11 +10,11 @@ pub trait IndexOf<V> {
     type Idx: Unsigned;
     type Found: Bit;
 }
-impl<V> IndexOf<V> for tarr![] {
+impl<V> IndexOf<V> for ta![] {
     type Idx = U0; // Always zero if not found
     type Found = B0;
 }
-impl<V, HD, TL: IndexOf<V>> IndexOf<V> for TArr<HD, TL>
+impl<V, HD, TL: IndexOf<V>> IndexOf<V> for ta![HD | TL]
 where
     V: IsEqual<HD, Output: BitOr<TL::Found, Output: Bit>>,
     TL::Idx: Add<TL::Found, Output: Unsigned>,
@@ -26,10 +27,10 @@ pub trait At<Idx: Unsigned> {
     type Output;
 }
 
-impl<HD, TL> At<U0> for TArr<HD, TL> {
+impl<HD, TL> At<U0> for ta![HD | TL] {
     type Output = HD;
 }
-impl<U: Unsigned, B: Bit, HD, TL: At<Sub1<UInt<U, B>>>> At<UInt<U, B>> for TArr<HD, TL>
+impl<U: Unsigned, B: Bit, HD, TL: At<Sub1<UInt<U, B>>>> At<UInt<U, B>> for ta![HD | TL]
 where
     UInt<U, B>: Sub<B1>,
     Sub1<UInt<U, B>>: Unsigned,
@@ -54,9 +55,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use typenum::{assert_type_eq, tarr, U0, U1, U10, U2, U3, U4, U5, U6, U7, U8, U9};
+    use crate::ta;
+    use typenum::{assert_type_eq, U0, U1, U10, U2, U3, U4, U5, U6, U7, U8, U9};
 
-    type A = tarr![U9, U8, U7, U6, U5, U4, U3, U2, U1, U0];
+    type A = ta![U9, U8, U7, U6, U5, U4, U3, U2, U1, U0];
     #[test]
     fn test_idx_of() {
         assert_eq!(IdxOf::<A, U0>::USIZE, 9);

@@ -1,15 +1,16 @@
+use crate::ta;
 use core::ops::Add;
-use typenum::{tarr, Add1, Eq, IsEqual, Sum, TArr, UInt, Unsigned, B0, B1, U0};
+use typenum::{Add1, Eq, IsEqual, Sum,  UInt, Unsigned, B0, B1, U0};
 
 pub type Count<A, V> = <A as CountOf<V>>::Count;
 pub trait CountOf<V> {
     type Count: Unsigned;
 }
-impl<T> CountOf<T> for tarr![] {
+impl<T> CountOf<T> for ta![] {
     type Count = U0;
 }
 impl<T: IsEqual<H>, H, U: CountOf<T, Count: Add<Eq<T, H>, Output: Unsigned>>> CountOf<T>
-    for TArr<H, U>
+    for ta![H |  U]
 {
     type Count = Sum<U::Count, Eq<T, H>>;
 }
@@ -30,9 +31,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use typenum::{tarr, U1, U10, U2, U3, U4, U5, U6, U7, U8, U9};
+    use crate::ta;
+    use typenum::{U1, U10, U2, U3, U4, U5, U6, U7, U8, U9};
 
-    type A = tarr![U8, U4, U4, U2, U4, U8, U4, U2, U1, U0];
+    type A = ta![U8, U4, U4, U2, U4, U8, U4, U2, U1, U0];
     #[test]
     fn test_count_is_zero() {
         assert_eq!(Count::<A, U3>::USIZE, 0);

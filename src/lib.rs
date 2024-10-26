@@ -2,6 +2,7 @@
 pub mod basis;
 mod collector;
 pub mod field;
+mod macros;
 pub mod metric;
 pub mod mvect;
 pub mod pga2d;

@@ -70,12 +70,13 @@ impl<U: Unsigned, M: Metric> From<N1> for Basis<U, M, B1> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ta;
     #[allow(unused_imports)]
     use typenum::{assert_type_eq, tarr, U0, U1, U2};
     #[test]
     fn into_basis() {
         #[allow(unused)]
-        type M = tarr![Z0, P1, P1];
+        type M = ta![Z0, P1, P1];
         assert_type_eq!(Basis<U2, M, B0>, <B0 as IntoBasis<U2, M>>::Output);
         assert_type_eq!(Basis<U2, M, B1>, <B1 as IntoBasis<U2, M>>::Output);
         assert_type_eq!(Basis<U2, M, B0>, <P1 as IntoBasis<U2, M>>::Output);
