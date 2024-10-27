@@ -7,17 +7,16 @@ use crate::{
     ta,
     traits::{Commutator, FatDot, ScalarProduct},
     utils::{
-        parity::{ReversePar, ReverseParity},
+        parity::{SwapPar, SwapParity},
         typeset::{Union, UnionMerge},
         Branch, If,
     },
 };
 use core::marker::PhantomData;
-use core::ops::{Add, BitAnd, BitOr, BitXor, Mul};
+use core::ops::{BitAnd, BitOr, BitXor, Mul};
 use generic_array::{ArrayLength, GenericArray};
 use typenum::{
-    And, Bit, Eq, IsEqual, IsNotEqual, Len, NotEq, Or, Prod, TypeArray, UInt, Unsigned, Xor, B0,
-    B1, U0,
+    And, Bit, Eq, IsEqual, IsNotEqual, Len, NotEq, Or, Prod, TypeArray, Unsigned, Xor, B0, B1, U0,
 };
 
 // --------------------------------------------
@@ -210,11 +209,13 @@ impl<
 // ----
 // Commutator Product
 pub struct CommutatorMarker;
-impl<L: Unsigned + BitXor<R, Output: ReversePar>, R: Unsigned> MvMulMarker<L, R>
-    for CommutatorMarker
+impl<
+        L: Unsigned + SwapPar<R, Parity: BitXor<SwapParity<R, L>, Output: Bit>>,
+        R: Unsigned + SwapPar<L>,
+    > MvMulMarker<L, R> for CommutatorMarker
 {
     // (a*b - b*a)/2 -> Not<IsReverse<Prod<L,R>>> // if an element is it's own reverse, it's not in the result
-    type Output = ReverseParity<Xor<L, R>>;
+    type Output = Xor<SwapParity<L, R>, SwapParity<R, L>>;
 }
 impl<
         A: BasisSet<M> + Len<Output: ArrayLength>,
@@ -260,11 +261,11 @@ impl<
 // ----
 // Left Contraction
 pub struct LeftContractionMarker;
-impl<L: Unsigned + BitAnd<R, Output: IsEqual<R>>, R: Unsigned> MvMulMarker<L, R>
+impl<L: Unsigned + BitAnd<R, Output: IsEqual<L>>, R: Unsigned> MvMulMarker<L, R>
     for LeftContractionMarker
 {
-    // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉ₛ-ₜ // R⊆L = L&R==R
-    type Output = Eq<And<L, R>, R>;
+    // C<<D = Σ〈〈C〉ₛ〈D〉ₜ〉ₜ-ₛ // L⊆R = L&R==L
+    type Output = Eq<And<L, R>, L>;
 }
 impl<
         A: BasisSet<M> + Len<Output: ArrayLength>,
@@ -291,11 +292,11 @@ impl<
 // ----
 // Right Contraction
 pub struct RightContractionMarker;
-impl<L: Unsigned + BitAnd<R, Output: IsEqual<L>>, R: Unsigned> MvMulMarker<L, R>
+impl<L: Unsigned + BitAnd<R, Output: IsEqual<R>>, R: Unsigned> MvMulMarker<L, R>
     for RightContractionMarker
 {
-    // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉ₜ-ₛ // L⊆R = L&R==L
-    type Output = Eq<And<L, R>, L>;
+    // C>>D = Σ〈〈C〉ₛ〈D〉ₜ〉ₛ-ₜ // R⊆L = L&R==R
+    type Output = Eq<And<L, R>, R>;
 }
 impl<
         A: BasisSet<M> + Len<Output: ArrayLength>,
@@ -514,6 +515,169 @@ mod tests {
         // TODO: is this the correct definition of inner product?
         let expected = (a * b) - (a ^ b);
         let actual = a | b;
+
+        println!("a = {}", a);
+        println!("b = {}", b);
+        println!("expected = {}", expected);
+        println!("actual   = {}", actual);
+        println!("diff     = {}", expected - actual);
+
+        assert!(expected == actual);
+    }
+    #[test]
+    fn test_commutator_prod() {
+        // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
+        // x(19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
+        let a = 1.0 * E
+            + 2.0 * E0
+            + 3.0 * E1
+            + 5.0 * E2
+            + 7.0 * E01
+            + 11.0 * E02
+            + 13.0 * E12
+            + 17.0 * E012;
+        let b = 19.0 * E
+            + 23.0 * E0
+            + 29.0 * E1
+            + 31.0 * E2
+            + 37.0 * E01
+            + 41.0 * E02
+            + 43.0 * E12
+            + 47.0 * E012;
+        let expected = 0.5 * ((a * b) - (b * a));
+        let actual = a.commutator(b);
+
+        println!("a = {}", a);
+        println!("b = {}", b);
+        println!("expected = {}", expected);
+        println!("actual   = {}", actual);
+        println!("diff     = {}", expected - actual);
+
+        assert!(expected == actual);
+    }
+    #[test]
+    fn test_left_contration() {
+        // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
+        // << (19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
+        // = -298 - 904e0 - 186e1 + 160e2 + 272e01 - 100e02 + 43e12 + 47e012
+        let a = 1.0 * E
+            + 2.0 * E0
+            + 3.0 * E1
+            + 5.0 * E2
+            + 7.0 * E01
+            + 11.0 * E02
+            + 13.0 * E12
+            + 17.0 * E012;
+        let b = 19.0 * E
+            + 23.0 * E0
+            + 29.0 * E1
+            + 31.0 * E2
+            + 37.0 * E01
+            + 41.0 * E02
+            + 43.0 * E12
+            + 47.0 * E012;
+        let expected = -298.0 * E - 904.0 * E0 - 186.0 * E1 + 160.0 * E2 + 272.0 * E01
+            - 100.0 * E02
+            + 43.0 * E12
+            + 47.0 * E012;
+        let actual = a << b;
+
+        println!("a = {}", a);
+        println!("b = {}", b);
+        println!("expected = {}", expected);
+        println!("actual   = {}", actual);
+        println!("diff     = {}", expected - actual);
+
+        assert!(expected == actual);
+    }
+    #[test]
+    fn test_right_contration() {
+        // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
+        // >> (19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
+        let a = 1.0 * E
+            + 2.0 * E0
+            + 3.0 * E1
+            + 5.0 * E2
+            + 7.0 * E01
+            + 11.0 * E02
+            + 13.0 * E12
+            + 17.0 * E012;
+        let b = 19.0 * E
+            + 23.0 * E0
+            + 29.0 * E1
+            + 31.0 * E2
+            + 37.0 * E01
+            + 41.0 * E02
+            + 43.0 * E12
+            + 47.0 * E012;
+        let expected =
+            -298.0 * E - 149.0 * E0 + 460.0 * E1 + 660.0 * E01 - 282.0 * E2 - 284.0 * E02
+                + 247.0 * E12
+                + 323.0 * E012;
+        let actual = a >> b;
+
+        println!("a = {}", a);
+        println!("b = {}", b);
+        println!("expected = {}", expected);
+        println!("actual   = {}", actual);
+        println!("diff     = {}", expected - actual);
+
+        assert!(expected == actual);
+    }
+    #[test]
+    fn test_scalar_product() {
+        // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
+        // .scalar_prod (19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
+        let a = 1.0 * E
+            + 2.0 * E0
+            + 3.0 * E1
+            + 5.0 * E2
+            + 7.0 * E01
+            + 11.0 * E02
+            + 13.0 * E12
+            + 17.0 * E012;
+        let b = 19.0 * E
+            + 23.0 * E0
+            + 29.0 * E1
+            + 31.0 * E2
+            + 37.0 * E01
+            + 41.0 * E02
+            + 43.0 * E12
+            + 47.0 * E012;
+        let expected = -298.0 * E;
+        let actual = a.scalar_prod(b);
+
+        println!("a = {}", a);
+        println!("b = {}", b);
+        println!("expected = {}", expected);
+        println!("actual   = {}", actual);
+        println!("diff     = {}", expected - actual);
+
+        assert!(expected == actual);
+    }
+    #[test]
+    fn test_fat_dot() {
+        // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
+        // .fat_dot (19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
+        // = -298 - 1053 * e0 + 274 * e1 + 932 * e01 - 122 * e2 - 384 * e02 + 290 * e12 + 370 * e012
+        let a = 1.0 * E
+            + 2.0 * E0
+            + 3.0 * E1
+            + 5.0 * E2
+            + 7.0 * E01
+            + 11.0 * E02
+            + 13.0 * E12
+            + 17.0 * E012;
+        let b = 19.0 * E
+            + 23.0 * E0
+            + 29.0 * E1
+            + 31.0 * E2
+            + 37.0 * E01
+            + 41.0 * E02
+            + 43.0 * E12
+            + 47.0 * E012;
+        let expected = (a << b) + (a >> b) - a.scalar_prod(b);
+        let actual = a.fat_dot(b);
 
         println!("a = {}", a);
         println!("b = {}", b);
