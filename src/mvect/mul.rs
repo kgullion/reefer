@@ -1,9 +1,9 @@
 use crate::{
-    basis::Basis,
+    basis::{Basis, ZeroVect},
     collector::CartCollector,
     field::Field,
     metric::Metric,
-    mvect::{basis_set::BasisSet, into::IntoBasisSet, Mvect},
+    mvect::{basis_set::BasisSet, Mvect},
     ta,
     traits::{Commutator, FatDot, ScalarProduct},
     utils::{
@@ -141,7 +141,17 @@ where
         >,
     >;
 }
-
+// --------------------------------------------
+/// IntoBasisSet - convert a Basis or ZeroVector type into a BasisSet
+pub trait IntoBasisSet {
+    type Output: TypeArray;
+}
+impl IntoBasisSet for ZeroVect {
+    type Output = ta![];
+}
+impl<U: Unsigned, M: Metric, S: Bit> IntoBasisSet for Basis<U, M, S> {
+    type Output = ta![U];
+}
 /// internal helper for implementing multiplication operators
 fn mv_mul_runner<
     K,
@@ -404,45 +414,33 @@ impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> core::ops::
 #[cfg(test)]
 mod tests {
     use super::*;
-    use typenum::{B0, P1, U0, U1, U2, U3, U4, U5, U6, U7, Z0};
-
-    type Metric = ta![Z0, P1, P1];
-    type Pga2d<U> = Basis<U, Metric, B0>;
-
-    const E: Pga2d<U0> = Pga2d::<U0>::new();
-    const E0: Pga2d<U1> = Pga2d::<U1>::new();
-    const E1: Pga2d<U2> = Pga2d::<U2>::new();
-    const E01: Pga2d<U3> = Pga2d::<U3>::new();
-    const E2: Pga2d<U4> = Pga2d::<U4>::new();
-    const E02: Pga2d<U5> = Pga2d::<U5>::new();
-    const E12: Pga2d<U6> = Pga2d::<U6>::new();
-    const E012: Pga2d<U7> = Pga2d::<U7>::new();
+    use crate::pga2d::{e0, e01, e012, e02, e1, e12, e2, scalar as e};
 
     #[test]
     fn test_geo_prod() {
         // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
         // *(19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
         // =−298 − 1053e0 + 274e1 + 122e2 + 981e01 − 617e02 + 238e12 + 715e012
-        let a = 1.0 * E
-            + 2.0 * E0
-            + 3.0 * E1
-            + 5.0 * E2
-            + 7.0 * E01
-            + 11.0 * E02
-            + 13.0 * E12
-            + 17.0 * E012;
-        let b = 19.0 * E
-            + 23.0 * E0
-            + 29.0 * E1
-            + 31.0 * E2
-            + 37.0 * E01
-            + 41.0 * E02
-            + 43.0 * E12
-            + 47.0 * E012;
-        let expected = -298.0 * E - 1053.0 * E0 + 274.0 * E1 - 122.0 * E2 + 981.0 * E01
-            - 617.0 * E02
-            + 238.0 * E12
-            + 715.0 * E012;
+        let a = 1.0 * e
+            + 2.0 * e0
+            + 3.0 * e1
+            + 5.0 * e2
+            + 7.0 * e01
+            + 11.0 * e02
+            + 13.0 * e12
+            + 17.0 * e012;
+        let b = 19.0 * e
+            + 23.0 * e0
+            + 29.0 * e1
+            + 31.0 * e2
+            + 37.0 * e01
+            + 41.0 * e02
+            + 43.0 * e12
+            + 47.0 * e012;
+        let expected = -298.0 * e - 1053.0 * e0 + 274.0 * e1 - 122.0 * e2 + 981.0 * e01
+            - 617.0 * e02
+            + 238.0 * e12
+            + 715.0 * e012;
         let actual = a * b;
 
         println!("a = {}", a);
@@ -458,30 +456,30 @@ mod tests {
         // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
         // ^(19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
         // = 19 + 61e0 + 86e1 + 159e01 + 126e2 + 197e02 + 238e12 + 715e012
-        let a = 1.0 * E
-            + 2.0 * E0
-            + 3.0 * E1
-            + 5.0 * E2
-            + 7.0 * E01
-            + 11.0 * E02
-            + 13.0 * E12
-            + 17.0 * E012;
-        let b = 19.0 * E
-            + 23.0 * E0
-            + 29.0 * E1
-            + 31.0 * E2
-            + 37.0 * E01
-            + 41.0 * E02
-            + 43.0 * E12
-            + 47.0 * E012;
-        let expected = 19.0 * E
-            + 61.0 * E0
-            + 86.0 * E1
-            + 159.0 * E01
-            + 126.0 * E2
-            + 197.0 * E02
-            + 238.0 * E12
-            + 715.0 * E012;
+        let a = 1.0 * e
+            + 2.0 * e0
+            + 3.0 * e1
+            + 5.0 * e2
+            + 7.0 * e01
+            + 11.0 * e02
+            + 13.0 * e12
+            + 17.0 * e012;
+        let b = 19.0 * e
+            + 23.0 * e0
+            + 29.0 * e1
+            + 31.0 * e2
+            + 37.0 * e01
+            + 41.0 * e02
+            + 43.0 * e12
+            + 47.0 * e012;
+        let expected = 19.0 * e
+            + 61.0 * e0
+            + 86.0 * e1
+            + 159.0 * e01
+            + 126.0 * e2
+            + 197.0 * e02
+            + 238.0 * e12
+            + 715.0 * e012;
         let actual = a ^ b;
 
         println!("a = {}", a);
@@ -496,22 +494,22 @@ mod tests {
     fn test_inner_prod() {
         // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
         // |(19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
-        let a = 1.0 * E
-            + 2.0 * E0
-            + 3.0 * E1
-            + 5.0 * E2
-            + 7.0 * E01
-            + 11.0 * E02
-            + 13.0 * E12
-            + 17.0 * E012;
-        let b = 19.0 * E
-            + 23.0 * E0
-            + 29.0 * E1
-            + 31.0 * E2
-            + 37.0 * E01
-            + 41.0 * E02
-            + 43.0 * E12
-            + 47.0 * E012;
+        let a = 1.0 * e
+            + 2.0 * e0
+            + 3.0 * e1
+            + 5.0 * e2
+            + 7.0 * e01
+            + 11.0 * e02
+            + 13.0 * e12
+            + 17.0 * e012;
+        let b = 19.0 * e
+            + 23.0 * e0
+            + 29.0 * e1
+            + 31.0 * e2
+            + 37.0 * e01
+            + 41.0 * e02
+            + 43.0 * e12
+            + 47.0 * e012;
         // TODO: is this the correct definition of inner product?
         let expected = (a * b) - (a ^ b);
         let actual = a | b;
@@ -528,22 +526,22 @@ mod tests {
     fn test_commutator_prod() {
         // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
         // x(19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
-        let a = 1.0 * E
-            + 2.0 * E0
-            + 3.0 * E1
-            + 5.0 * E2
-            + 7.0 * E01
-            + 11.0 * E02
-            + 13.0 * E12
-            + 17.0 * E012;
-        let b = 19.0 * E
-            + 23.0 * E0
-            + 29.0 * E1
-            + 31.0 * E2
-            + 37.0 * E01
-            + 41.0 * E02
-            + 43.0 * E12
-            + 47.0 * E012;
+        let a = 1.0 * e
+            + 2.0 * e0
+            + 3.0 * e1
+            + 5.0 * e2
+            + 7.0 * e01
+            + 11.0 * e02
+            + 13.0 * e12
+            + 17.0 * e012;
+        let b = 19.0 * e
+            + 23.0 * e0
+            + 29.0 * e1
+            + 31.0 * e2
+            + 37.0 * e01
+            + 41.0 * e02
+            + 43.0 * e12
+            + 47.0 * e012;
         let expected = 0.5 * ((a * b) - (b * a));
         let actual = a.commutator(b);
 
@@ -560,26 +558,26 @@ mod tests {
         // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
         // << (19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
         // = -298 - 904e0 - 186e1 + 160e2 + 272e01 - 100e02 + 43e12 + 47e012
-        let a = 1.0 * E
-            + 2.0 * E0
-            + 3.0 * E1
-            + 5.0 * E2
-            + 7.0 * E01
-            + 11.0 * E02
-            + 13.0 * E12
-            + 17.0 * E012;
-        let b = 19.0 * E
-            + 23.0 * E0
-            + 29.0 * E1
-            + 31.0 * E2
-            + 37.0 * E01
-            + 41.0 * E02
-            + 43.0 * E12
-            + 47.0 * E012;
-        let expected = -298.0 * E - 904.0 * E0 - 186.0 * E1 + 160.0 * E2 + 272.0 * E01
-            - 100.0 * E02
-            + 43.0 * E12
-            + 47.0 * E012;
+        let a = 1.0 * e
+            + 2.0 * e0
+            + 3.0 * e1
+            + 5.0 * e2
+            + 7.0 * e01
+            + 11.0 * e02
+            + 13.0 * e12
+            + 17.0 * e012;
+        let b = 19.0 * e
+            + 23.0 * e0
+            + 29.0 * e1
+            + 31.0 * e2
+            + 37.0 * e01
+            + 41.0 * e02
+            + 43.0 * e12
+            + 47.0 * e012;
+        let expected = -298.0 * e - 904.0 * e0 - 186.0 * e1 + 160.0 * e2 + 272.0 * e01
+            - 100.0 * e02
+            + 43.0 * e12
+            + 47.0 * e012;
         let actual = a << b;
 
         println!("a = {}", a);
@@ -594,26 +592,26 @@ mod tests {
     fn test_right_contration() {
         // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
         // >> (19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
-        let a = 1.0 * E
-            + 2.0 * E0
-            + 3.0 * E1
-            + 5.0 * E2
-            + 7.0 * E01
-            + 11.0 * E02
-            + 13.0 * E12
-            + 17.0 * E012;
-        let b = 19.0 * E
-            + 23.0 * E0
-            + 29.0 * E1
-            + 31.0 * E2
-            + 37.0 * E01
-            + 41.0 * E02
-            + 43.0 * E12
-            + 47.0 * E012;
+        let a = 1.0 * e
+            + 2.0 * e0
+            + 3.0 * e1
+            + 5.0 * e2
+            + 7.0 * e01
+            + 11.0 * e02
+            + 13.0 * e12
+            + 17.0 * e012;
+        let b = 19.0 * e
+            + 23.0 * e0
+            + 29.0 * e1
+            + 31.0 * e2
+            + 37.0 * e01
+            + 41.0 * e02
+            + 43.0 * e12
+            + 47.0 * e012;
         let expected =
-            -298.0 * E - 149.0 * E0 + 460.0 * E1 + 660.0 * E01 - 282.0 * E2 - 284.0 * E02
-                + 247.0 * E12
-                + 323.0 * E012;
+            -298.0 * e - 149.0 * e0 + 460.0 * e1 + 660.0 * e01 - 282.0 * e2 - 284.0 * e02
+                + 247.0 * e12
+                + 323.0 * e012;
         let actual = a >> b;
 
         println!("a = {}", a);
@@ -628,23 +626,23 @@ mod tests {
     fn test_scalar_product() {
         // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
         // .scalar_prod (19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
-        let a = 1.0 * E
-            + 2.0 * E0
-            + 3.0 * E1
-            + 5.0 * E2
-            + 7.0 * E01
-            + 11.0 * E02
-            + 13.0 * E12
-            + 17.0 * E012;
-        let b = 19.0 * E
-            + 23.0 * E0
-            + 29.0 * E1
-            + 31.0 * E2
-            + 37.0 * E01
-            + 41.0 * E02
-            + 43.0 * E12
-            + 47.0 * E012;
-        let expected = -298.0 * E;
+        let a = 1.0 * e
+            + 2.0 * e0
+            + 3.0 * e1
+            + 5.0 * e2
+            + 7.0 * e01
+            + 11.0 * e02
+            + 13.0 * e12
+            + 17.0 * e012;
+        let b = 19.0 * e
+            + 23.0 * e0
+            + 29.0 * e1
+            + 31.0 * e2
+            + 37.0 * e01
+            + 41.0 * e02
+            + 43.0 * e12
+            + 47.0 * e012;
+        let expected = -298.0 * e;
         let actual = a.scalar_prod(b);
 
         println!("a = {}", a);
@@ -660,22 +658,22 @@ mod tests {
         // (1 + 2e0 + 3e1 + 5e2 + 7e01 + 11e02 + 13e12 + 17e012)
         // .fat_dot (19 + 23e0 + 29e1 + 31e2 + 37e01 + 41e02 + 43e12 + 47e012)
         // = -298 - 1053 * e0 + 274 * e1 + 932 * e01 - 122 * e2 - 384 * e02 + 290 * e12 + 370 * e012
-        let a = 1.0 * E
-            + 2.0 * E0
-            + 3.0 * E1
-            + 5.0 * E2
-            + 7.0 * E01
-            + 11.0 * E02
-            + 13.0 * E12
-            + 17.0 * E012;
-        let b = 19.0 * E
-            + 23.0 * E0
-            + 29.0 * E1
-            + 31.0 * E2
-            + 37.0 * E01
-            + 41.0 * E02
-            + 43.0 * E12
-            + 47.0 * E012;
+        let a = 1.0 * e
+            + 2.0 * e0
+            + 3.0 * e1
+            + 5.0 * e2
+            + 7.0 * e01
+            + 11.0 * e02
+            + 13.0 * e12
+            + 17.0 * e012;
+        let b = 19.0 * e
+            + 23.0 * e0
+            + 29.0 * e1
+            + 31.0 * e2
+            + 37.0 * e01
+            + 41.0 * e02
+            + 43.0 * e12
+            + 47.0 * e012;
         let expected = (a << b) + (a >> b) - a.scalar_prod(b);
         let actual = a.fat_dot(b);
 

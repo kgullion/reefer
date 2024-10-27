@@ -1,7 +1,7 @@
 use crate::{
     basis::{Basis, ZeroVect},
     metric::Metric,
-    mvect::into::IntoBasisSet,
+    mvect::mul::IntoBasisSet,
     ta,
     traits::Graded,
     utils::{

@@ -8,13 +8,9 @@ pub mod into;
 pub mod mul;
 pub mod negations;
 
-use crate::{metric::Metric, ta};
+use crate::metric::Metric;
 use core::marker::PhantomData;
-use core::ops;
-use typenum::{
-    Bit, Cmp, Compare, Eq, Equal, Greater, Integer, IsEqual, Less, Ord, Prod, TypeArray, Unsigned,
-    Xor, B0, B1, N1, P1, U0, Z0,
-};
+use typenum::{Bit, Unsigned};
 
 // -------------------------------------
 /// A Basis is a signed product of unit length basis vectors in a geometric algebra.
