@@ -115,14 +115,16 @@ impl<
     }
 }
 
-// Normalize - Basis all all length 1 (other than the zero vector) so they are already normalized
+// Normalize - Basis all length 1 (other than the zero vector) so they are already normalized
 impl Normalize for ZeroVect {
+    type Output = ZeroVect;
     #[inline(always)]
     fn normalize(self) -> Self {
         self
     }
 }
 impl<U: Unsigned, M: Metric, S: Bit> Normalize for Basis<U, M, S> {
+    type Output = Self;
     #[inline(always)]
     fn normalize(self) -> Self {
         self

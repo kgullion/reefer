@@ -1,6 +1,6 @@
 use crate::ta;
 use core::ops::Add;
-use typenum::{Add1, Eq, IsEqual, Sum,  UInt, Unsigned, B0, B1, U0};
+use typenum::{Add1, Eq, IsEqual, Sum, UInt, Unsigned, B0, B1, U0};
 
 pub type Count<A, V> = <A as CountOf<V>>::Count;
 pub trait CountOf<V> {
@@ -10,7 +10,7 @@ impl<T> CountOf<T> for ta![] {
     type Count = U0;
 }
 impl<T: IsEqual<H>, H, U: CountOf<T, Count: Add<Eq<T, H>, Output: Unsigned>>> CountOf<T>
-    for ta![H |  U]
+    for ta![H | U]
 {
     type Count = Sum<U::Count, Eq<T, H>>;
 }

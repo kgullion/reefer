@@ -23,6 +23,7 @@ pub trait Undual {
 }
 pub trait Graded<G: Unsigned> {
     type BasisSet: TypeArray;
+    fn grade(self) -> usize;
     fn graded(self) -> impl GeometricObject;
 }
 pub trait Involute {
@@ -42,7 +43,8 @@ pub trait Inverse {
     fn inverse(self) -> Option<Self::Output>;
 }
 pub trait Normalize {
-    fn normalize(self) -> Self;
+    type Output;
+    fn normalize(self) -> Self::Output;
 }
 pub trait Pow {
     type Output;

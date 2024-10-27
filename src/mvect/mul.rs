@@ -16,8 +16,8 @@ use core::marker::PhantomData;
 use core::ops::{Add, BitAnd, BitOr, BitXor, Mul};
 use generic_array::{ArrayLength, GenericArray};
 use typenum::{
-    And, Bit, Eq, IsEqual, IsNotEqual, Len, NotEq, Or, Prod,  TypeArray, UInt, Unsigned, Xor,
-    B0, B1, U0,
+    And, Bit, Eq, IsEqual, IsNotEqual, Len, NotEq, Or, Prod, TypeArray, UInt, Unsigned, Xor, B0,
+    B1, U0,
 };
 
 // --------------------------------------------
@@ -42,9 +42,9 @@ impl<
         M: Metric + MvMulRunInner<K, F, OUT, L, B> + MvMulRun<K, F, OUT, A, B>,
         F: Field,
         K,
-    > MvMulRun<K, F, OUT, ta![L |  A], B> for M
+    > MvMulRun<K, F, OUT, ta![L | A], B> for M
 where
-    ta![L |  A]: BasisSet<M>,
+    ta![L | A]: BasisSet<M>,
 {
     fn mv_mul(out: &mut [F], left: &[F], right: &[F]) {
         <M as MvMulRunInner<K, F, OUT, L, B>>::mv_mul_inner(out, &left[0], right);
@@ -68,7 +68,7 @@ impl<
         M: Metric + MvMulRunInner<K, F, OUT, L, B>,
         F: Field,
         K: MvMulMarker<L, R>,
-    > MvMulRunInner<K, F, OUT, L, ta![R |  B]> for M
+    > MvMulRunInner<K, F, OUT, L, ta![R | B]> for M
 where
     Basis<L, M, B0>: Mul<Basis<R, M, B0>, Output: CartCollector<F, OUT>>,
 {
@@ -97,9 +97,9 @@ impl<
         B: BasisSet<M> + Len<Output: ArrayLength>,
         M: Metric + MvMulType<K, A, B> + MvMulTypeInner<K, L, B>,
         K,
-    > MvMulType<K, ta![L |  A], B> for M
+    > MvMulType<K, ta![L | A], B> for M
 where
-    ta![L |  A]: BasisSet<M>,
+    ta![L | A]: BasisSet<M>,
     <M as MvMulType<K, A, B>>::Output:
         UnionMerge<<M as MvMulTypeInner<K, L, B>>::Output, Output: BasisSet<M>>,
     <M as MvMulTypeInner<K, L, B>>::Output: BasisSet<M>,
@@ -116,7 +116,7 @@ impl<L: Unsigned, M: Metric, K> MvMulTypeInner<K, L, ta![]> for M {
 }
 // L*[R|B] = L*R + L*B
 impl<L: Unsigned, R: Unsigned, B: BasisSet<M>, M: Metric + MvMulTypeInner<K, L, B>, K>
-    MvMulTypeInner<K, L, ta![R |  B]> for M
+    MvMulTypeInner<K, L, ta![R | B]> for M
 where
     K: MvMulMarker<L, R>,
     Basis<L, M, B0>: Mul<Basis<R, M, B0>, Output: IntoBasisSet<Output: BasisSet<M>>>,
