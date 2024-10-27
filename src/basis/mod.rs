@@ -8,7 +8,7 @@ pub mod into;
 pub mod mul;
 pub mod negations;
 
-use crate::metric::Metric;
+use crate::{metric::Metric, ta};
 use core::marker::PhantomData;
 use typenum::{Bit, Unsigned};
 
@@ -30,4 +30,20 @@ impl<U: Unsigned, M: Metric, S: Bit> Basis<U, M, S> {
     pub const fn new() -> Self {
         Self(PhantomData)
     }
+}
+
+pub trait BasisInfo {
+    type Mask: Unsigned;
+    type Metric: Metric;
+    type Parity: Bit;
+}
+impl BasisInfo for ZeroVect {
+    type Mask = typenum::U0;
+    type Metric = ta![];
+    type Parity = typenum::B0;
+}
+impl<U: Unsigned, M: Metric, S: Bit> BasisInfo for Basis<U, M, S> {
+    type Mask = U;
+    type Metric = M;
+    type Parity = S;
 }

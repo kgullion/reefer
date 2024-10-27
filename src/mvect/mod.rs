@@ -2,6 +2,7 @@ pub mod add;
 pub mod basis_set;
 pub mod default;
 pub mod display;
+pub mod dual;
 pub mod equality;
 pub mod mul;
 

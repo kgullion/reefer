@@ -5,7 +5,7 @@ use crate::{
     metric::Metric,
     mvect::{basis_set::BasisSet, Mvect},
     ta,
-    traits::{Commutator, FatDot, ScalarProduct},
+    traits::{Commutator, Dual, FatDot, ScalarProduct, Undual},
     utils::{
         parity::{SwapPar, SwapParity},
         typeset::{Union, UnionMerge},
@@ -214,6 +214,25 @@ impl<
         let mut out = Self::Output::default();
         mv_mul_runner::<OuterProdMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
         out
+    }
+}
+// ----
+// Regressive Product
+impl<
+        A: BasisSet<M> + Len<Output: ArrayLength>,
+        B: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric
+            + MvMulType<CommutatorMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
+            + MvMulRun<CommutatorMarker, F, <M as MvMulType<CommutatorMarker, A, B>>::Output, A, B>,
+        F: Field,
+    > BitAnd<Mvect<B, M, F>> for Mvect<A, M, F>
+where
+    Self: Dual<Output: BitXor<<Mvect<B, M, F> as Dual>::Output, Output: Undual>>,
+    Mvect<B, M, F>: Dual,
+{
+    type Output = <Xor<<Self as Dual>::Output, <Mvect<B, M, F> as Dual>::Output> as Undual>::Output;
+    fn bitand(self, rhs: Mvect<B, M, F>) -> Self::Output {
+        (self.dual() ^ rhs.dual()).undual()
     }
 }
 // ----
