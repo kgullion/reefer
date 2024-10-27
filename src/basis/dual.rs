@@ -97,4 +97,32 @@ impl Undual for ZeroVect {
     }
 }
 
-// TODO: test dual and undual
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::vga3d::{scalar as e, x, xy, xyz, xz, y, yz, z};
+
+    #[test]
+    fn dual() {
+        assert!(e * e.dual() == xyz);
+        assert!(x * x.dual() == xyz);
+        assert!(y * y.dual() == xyz);
+        assert!(z * z.dual() == xyz);
+        assert!(xy * xy.dual() == xyz);
+        assert!(xz * xz.dual() == xyz);
+        assert!(yz * yz.dual() == xyz);
+        assert!(xyz * xyz.dual() == xyz);
+    }
+
+    #[test]
+    fn undual() {
+        assert!(e.undual() * e == xyz);
+        assert!(x.undual() * x == xyz);
+        assert!(y.undual() * y == xyz);
+        assert!(z.undual() * z == xyz);
+        assert!(xy.undual() * xy == xyz);
+        assert!(xz.undual() * xz == xyz);
+        assert!(yz.undual() * yz == xyz);
+        assert!(xyz.undual() * xyz == xyz);
+    }
+}

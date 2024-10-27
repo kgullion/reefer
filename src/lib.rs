@@ -8,6 +8,7 @@ pub mod mvect;
 pub mod pga2d;
 pub mod traits;
 mod utils;
+pub mod vga3d;
 
 use basis::{Basis, ZeroVect};
 use field::Field;
