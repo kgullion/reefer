@@ -16,6 +16,7 @@ impl<
         F: Field + fmt::Display,
     > fmt::Display for Mvect<A, M, F>
 {
+    #[inline(always)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         <A as MvDisplayHead<M, F>>::fmt(&self.0, f)
     }

@@ -12,12 +12,15 @@ use typenum::Len;
 struct MvPartialEq;
 // Collect the results of comparing two multivectors
 impl<'a, F: Field> Collector<F, bool> for MvPartialEq {
+    #[inline(always)]
     fn collect_both(out: bool, left: &F, right: &F) -> bool {
         out && left == right
     }
+    #[inline(always)]
     fn collect_just_left(out: bool, left: &F) -> bool {
         out && left == &F::zero()
     }
+    #[inline(always)]
     fn collect_just_right(out: bool, right: &F) -> bool {
         out && &F::zero() == right
     }
@@ -30,6 +33,7 @@ impl<
         F: Field + CollectInto<F, MvPartialEq, bool, BS, RBS>,
     > core::cmp::PartialEq<Mvect<RBS, M, F>> for Mvect<BS, M, F>
 {
+    #[inline(always)]
     fn eq(&self, other: &Mvect<RBS, M, F>) -> bool {
         MvPartialEq::do_collect::<BS, RBS>(true, &self.0, &other.0)
     }

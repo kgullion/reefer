@@ -23,6 +23,7 @@ impl<
     > Dual for Mvect<A, M, F>
 {
     type Output = Mvect<<A as DualBs<M, F>>::Output, M, F>;
+    #[inline(always)]
     fn dual(self) -> Self::Output {
         let mut out = Self::Output::default();
         let data: &mut [F] = &mut out.0;
@@ -45,6 +46,7 @@ impl<
     > Undual for Mvect<A, M, F>
 {
     type Output = Mvect<<A as DualBs<M, F>>::Output, M, F>;
+    #[inline(always)]
     fn undual(self) -> Self::Output {
         let mut out = Self::Output::default();
         let data: &mut [F] = &mut out.0;
@@ -70,6 +72,7 @@ pub trait DualBsFlipper<M: Metric, F: Field>: BasisSet<M> {
     fn flip(data: &mut [F]);
 }
 impl<M: Metric, F: Field> DualBsFlipper<M, F> for ta![] {
+    #[inline(always)]
     fn flip(_data: &mut [F]) {}
 }
 impl<U: Unsigned, A: BasisSet<M>, M: Metric, F: Field> DualBsFlipper<M, F> for ta![U | A]
@@ -79,6 +82,7 @@ where
     U: DualPar<M>,
     F: core::fmt::Debug,
 {
+    #[inline(always)]
     fn flip(data: &mut [F]) {
         if DualParity::<U, M>::BOOL {
             data[0] = -data[0].clone();

@@ -15,15 +15,18 @@ use core::ops::{Add, Sub};
 struct MvAdd;
 // Collect the results of adding two multivectors
 impl<F: Field> Collector<F, &mut [F]> for MvAdd {
+    #[inline(always)]
     fn collect_both<'a>(out: &'a mut [F], left: &F, right: &F) -> &'a mut [F] {
         out[0] += left.clone();
         out[0] += right.clone();
         &mut out[1..]
     }
+    #[inline(always)]
     fn collect_just_left<'a>(out: &'a mut [F], left: &F) -> &'a mut [F] {
         out[0] += left.clone();
         &mut out[1..]
     }
+    #[inline(always)]
     fn collect_just_right<'a>(out: &'a mut [F], right: &F) -> &'a mut [F] {
         out[0] += right.clone();
         &mut out[1..]
@@ -40,6 +43,7 @@ impl<
     > Add<&Mvect<RBS, M, F>> for &Mvect<LBS, M, F>
 {
     type Output = Mvect<Union<LBS, RBS>, M, F>;
+    #[inline(always)]
     fn add(self, rhs: &Mvect<RBS, M, F>) -> Self::Output {
         let mut out = Self::Output::default();
         MvAdd::do_collect::<LBS, RBS>(&mut out.0, &self.0, &rhs.0);
@@ -57,6 +61,7 @@ impl<
     > Add<Mvect<RBS, M, F>> for Mvect<LBS, M, F>
 {
     type Output = Mvect<Union<LBS, RBS>, M, F>;
+    #[inline(always)]
     fn add(self, rhs: Mvect<RBS, M, F>) -> Self::Output {
         &self + &rhs
     }
@@ -66,15 +71,18 @@ impl<
 struct MvSub;
 // Collect the results of subtracting two multivectors
 impl<F: Field> Collector<F, &mut [F]> for MvSub {
+    #[inline(always)]
     fn collect_both<'a>(out: &'a mut [F], left: &F, right: &F) -> &'a mut [F] {
         out[0] += left.clone();
         out[0] -= right.clone();
         &mut out[1..]
     }
+    #[inline(always)]
     fn collect_just_left<'a>(out: &'a mut [F], left: &F) -> &'a mut [F] {
         out[0] += left.clone();
         &mut out[1..]
     }
+    #[inline(always)]
     fn collect_just_right<'a>(out: &'a mut [F], right: &F) -> &'a mut [F] {
         out[0] -= right.clone();
         &mut out[1..]
@@ -90,6 +98,7 @@ impl<
     > Sub<&Mvect<RBS, M, F>> for &Mvect<LBS, M, F>
 {
     type Output = Mvect<Union<LBS, RBS>, M, F>;
+    #[inline(always)]
     fn sub(self, rhs: &Mvect<RBS, M, F>) -> Self::Output {
         let mut out = Self::Output::default();
         MvSub::do_collect::<LBS, RBS>(&mut out.0, &self.0, &rhs.0);
@@ -106,6 +115,7 @@ impl<
     > Sub<Mvect<RBS, M, F>> for Mvect<LBS, M, F>
 {
     type Output = Mvect<Union<LBS, RBS>, M, F>;
+    #[inline(always)]
     fn sub(self, rhs: Mvect<RBS, M, F>) -> Self::Output {
         &self - &rhs
     }

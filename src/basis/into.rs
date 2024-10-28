@@ -44,24 +44,28 @@ where
 // only valid casts are defined
 impl<U: Unsigned, M: Metric, S: Bit> From<S> for Basis<U, M, S> {
     // Bit is the Parity of the Sign
+    #[inline(always)]
     fn from(_: S) -> Self {
         Self::default()
     }
 }
 impl From<Z0> for ZeroVect {
     // Zero is Zero
+    #[inline(always)]
     fn from(_: Z0) -> Self {
         Self::default()
     }
 }
 impl<U: Unsigned, M: Metric> From<P1> for Basis<U, M, B0> {
     // +1 -> parity==false
+    #[inline(always)]
     fn from(_: P1) -> Self {
         Self::default()
     }
 }
 impl<U: Unsigned, M: Metric> From<N1> for Basis<U, M, B1> {
     // -1 -> parity==true
+    #[inline(always)]
     fn from(_: N1) -> Self {
         Self::default()
     }

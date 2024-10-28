@@ -14,6 +14,7 @@ use typenum::{Bit, Eq, IsEqual, Unsigned, B1};
 
 impl<G: Unsigned> Graded<G> for ZeroVect {
     type BasisSet = ta![];
+    #[inline(always)]
     fn grade(self) -> usize {
         0
     }
@@ -34,6 +35,7 @@ where
     >,
 {
     type BasisSet = <If<Eq<Count<U, B1>, G>, Basis<U, M, S>, ZeroVect> as IntoBasisSet>::Output;
+    #[inline(always)]
     fn grade(self) -> usize {
         Count::<U, B1>::USIZE
     }

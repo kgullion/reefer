@@ -33,6 +33,7 @@ where
     Mvect<A, M, f32>: core::ops::Mul<f32>,
 {
     type Output = Prod<Mvect<A, M, f32>, f32>;
+    #[inline(always)]
     fn mul(self, rhs: Mvect<A, M, f32>) -> Self::Output {
         rhs * self
     }
@@ -42,6 +43,7 @@ where
     Basis<U, M, S>: core::ops::Mul<f32>,
 {
     type Output = Prod<Basis<U, M, S>, f32>;
+    #[inline(always)]
     fn mul(self, rhs: Basis<U, M, S>) -> Self::Output {
         rhs * self
     }

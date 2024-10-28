@@ -8,6 +8,7 @@ use typenum::{And, Bit, Eq, IsEqual, Unsigned, B0, B1};
 // 0==0
 impl IsEqual<ZeroVect> for ZeroVect {
     type Output = B1;
+    #[inline(always)]
     fn is_equal(self, _: ZeroVect) -> Self::Output {
         Self::Output::default()
     }
@@ -15,6 +16,7 @@ impl IsEqual<ZeroVect> for ZeroVect {
 // 0!=B
 impl<U: Unsigned, M: Metric, S: Bit> IsEqual<Basis<U, M, S>> for ZeroVect {
     type Output = B0;
+    #[inline(always)]
     fn is_equal(self, _: Basis<U, M, S>) -> Self::Output {
         Self::Output::default()
     }
@@ -22,6 +24,7 @@ impl<U: Unsigned, M: Metric, S: Bit> IsEqual<Basis<U, M, S>> for ZeroVect {
 // B!=0
 impl<U: Unsigned, M: Metric, S: Bit> IsEqual<ZeroVect> for Basis<U, M, S> {
     type Output = B0;
+    #[inline(always)]
     fn is_equal(self, _: ZeroVect) -> Self::Output {
         Self::Output::default()
     }
@@ -38,6 +41,7 @@ where
     Eq<LU, RU>: BitAnd<Eq<LS, RS>>,
 {
     type Output = And<Eq<LU, RU>, Eq<LS, RS>>;
+    #[inline(always)]
     fn is_equal(self, _: Basis<RU, M, RS>) -> Self::Output {
         Self::Output::default()
     }

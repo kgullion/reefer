@@ -6,12 +6,14 @@ use core::fmt;
 use typenum::{Unsigned, B0, B1};
 
 impl fmt::Display for ZeroVect {
+    #[inline(always)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "0")
     }
 }
 
 impl<U: Unsigned, M: Metric> fmt::Display for Basis<U, M, B0> {
+    #[inline(always)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "e")?;
         let mut n = U::to_usize();
@@ -28,6 +30,7 @@ impl<U: Unsigned, M: Metric> fmt::Display for Basis<U, M, B0> {
 }
 
 impl<U: Unsigned, M: Metric> fmt::Display for Basis<U, M, B1> {
+    #[inline(always)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "-{}", Basis::<U, M, B0>::new())
     }

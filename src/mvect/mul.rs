@@ -31,6 +31,7 @@ pub trait MvMulRun<K, F, OUT, A: BasisSet<Self>, B: BasisSet<Self>>: Metric + Si
     fn mv_mul(out: &mut [F], left: &[F], right: &[F]);
 }
 impl<B: BasisSet<M>, OUT: BasisSet<M>, M: Metric, F: Field, K> MvMulRun<K, F, OUT, ta![], B> for M {
+    #[inline(always)]
     fn mv_mul(_out: &mut [F], _left: &[F], _right: &[F]) {}
 }
 impl<
@@ -45,6 +46,7 @@ impl<
 where
     ta![L | A]: BasisSet<M>,
 {
+    #[inline(always)]
     fn mv_mul(out: &mut [F], left: &[F], right: &[F]) {
         <M as MvMulRunInner<K, F, OUT, L, B>>::mv_mul_inner(out, &left[0], right);
         <M as MvMulRun<K, F, OUT, A, B>>::mv_mul(out, &left[1..], right);
@@ -57,6 +59,7 @@ pub trait MvMulRunInner<K, F, OUT, L, B>: Metric {
 impl<L: Unsigned, OUT: BasisSet<M>, M: Metric, F: Field, K> MvMulRunInner<K, F, OUT, L, ta![]>
     for M
 {
+    #[inline(always)]
     fn mv_mul_inner(_out: &mut [F], _left: &F, _right: &[F]) {}
 }
 impl<
@@ -71,6 +74,7 @@ impl<
 where
     Basis<L, M, B0>: Mul<Basis<R, M, B0>, Output: CartCollector<F, OUT>>,
 {
+    #[inline(always)]
     fn mv_mul_inner(out: &mut [F], left: &F, right: &[F]) {
         if <K as MvMulMarker<L, R>>::Output::BOOL {
             <Prod<Basis<L, M, B0>, Basis<R, M, B0>> as CartCollector<F, OUT>>::collect(
@@ -153,6 +157,7 @@ impl<U: Unsigned, M: Metric, S: Bit> IntoBasisSet for Basis<U, M, S> {
     type Output = ta![U];
 }
 /// internal helper for implementing multiplication operators
+#[inline(always)]
 fn mv_mul_runner<
     K,
     A: BasisSet<M>,
@@ -185,6 +190,7 @@ impl<
     > core::ops::Mul<Mvect<B, M, F>> for Mvect<A, M, F>
 {
     type Output = Mvect<<M as MvMulType<GeoProdMarker, A, B>>::Output, M, F>;
+    #[inline(always)]
     fn mul(self, rhs: Mvect<B, M, F>) -> Self::Output {
         let mut out = Self::Output::default();
         mv_mul_runner::<GeoProdMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
@@ -210,6 +216,7 @@ impl<
     > core::ops::BitXor<Mvect<B, M, F>> for Mvect<A, M, F>
 {
     type Output = Mvect<<M as MvMulType<OuterProdMarker, A, B>>::Output, M, F>;
+    #[inline(always)]
     fn bitxor(self, rhs: Mvect<B, M, F>) -> Self::Output {
         let mut out = Self::Output::default();
         mv_mul_runner::<OuterProdMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
@@ -229,6 +236,7 @@ where
     Mvect<B, M, F>: Dual,
 {
     type Output = <Xor<<Self as Dual>::Output, <Mvect<B, M, F> as Dual>::Output> as Undual>::Output;
+    #[inline(always)]
     fn bitand(self, rhs: Mvect<B, M, F>) -> Self::Output {
         (self.dual() ^ rhs.dual()).undual()
     }
@@ -254,6 +262,7 @@ impl<
     > Commutator<Mvect<B, M, F>> for Mvect<A, M, F>
 {
     type Output = Mvect<<M as MvMulType<CommutatorMarker, A, B>>::Output, M, F>;
+    #[inline(always)]
     fn commutator(self, rhs: Mvect<B, M, F>) -> Self::Output {
         let mut out = Self::Output::default();
         mv_mul_runner::<CommutatorMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
@@ -279,6 +288,7 @@ impl<
     > core::ops::BitOr<Mvect<B, M, F>> for Mvect<A, M, F>
 {
     type Output = Mvect<<M as MvMulType<InnerProdMarker, A, B>>::Output, M, F>;
+    #[inline(always)]
     fn bitor(self, rhs: Mvect<B, M, F>) -> Self::Output {
         let mut out = Self::Output::default();
         mv_mul_runner::<InnerProdMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
@@ -310,6 +320,7 @@ impl<
     > core::ops::Shl<Mvect<B, M, F>> for Mvect<A, M, F>
 {
     type Output = Mvect<<M as MvMulType<LeftContractionMarker, A, B>>::Output, M, F>;
+    #[inline(always)]
     fn shl(self, rhs: Mvect<B, M, F>) -> Self::Output {
         let mut out = Self::Output::default();
         mv_mul_runner::<LeftContractionMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
@@ -341,6 +352,7 @@ impl<
     > core::ops::Shr<Mvect<B, M, F>> for Mvect<A, M, F>
 {
     type Output = Mvect<<M as MvMulType<RightContractionMarker, A, B>>::Output, M, F>;
+    #[inline(always)]
     fn shr(self, rhs: Mvect<B, M, F>) -> Self::Output {
         let mut out = Self::Output::default();
         mv_mul_runner::<RightContractionMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
@@ -365,6 +377,7 @@ impl<
     > ScalarProduct<Mvect<B, M, F>> for Mvect<A, M, F>
 {
     type Output = Mvect<<M as MvMulType<ScalarProdMarker, A, B>>::Output, M, F>;
+    #[inline(always)]
     fn scalar_prod(self, rhs: Mvect<B, M, F>) -> Self::Output {
         let mut out = Self::Output::default();
         mv_mul_runner::<ScalarProdMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
@@ -391,6 +404,7 @@ impl<
     > FatDot<Mvect<B, M, F>> for Mvect<A, M, F>
 {
     type Output = Mvect<<M as MvMulType<FatDotMarker, A, B>>::Output, M, F>;
+    #[inline(always)]
     fn fat_dot(self, rhs: Mvect<B, M, F>) -> Self::Output {
         let mut out = Self::Output::default();
         mv_mul_runner::<FatDotMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
@@ -401,6 +415,7 @@ impl<
 // --------------------------------------------
 impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B0> {
     type Output = Mvect<ta![U], M, F>;
+    #[inline(always)]
     fn mul(self, rhs: F) -> Self::Output {
         let mut out = GenericArray::default();
         out[0] = rhs;
@@ -409,6 +424,7 @@ impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B0> {
 }
 impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B1> {
     type Output = Mvect<ta![U], M, F>;
+    #[inline(always)]
     fn mul(self, rhs: F) -> Self::Output {
         let mut out = GenericArray::default();
         out[0] = -rhs;
@@ -419,6 +435,7 @@ impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> core::ops::
     for Mvect<A, M, F>
 {
     type Output = Mvect<A, M, F>;
+    #[inline(always)]
     fn mul(self, rhs: F) -> Self::Output {
         let mut out = self;
         for i in 0..out.0.len() {
