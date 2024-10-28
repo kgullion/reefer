@@ -1,6 +1,7 @@
 pub mod contains;
 pub mod count;
 pub mod parity;
+pub mod reverse;
 pub mod typeset;
 use crate::ta;
 use typenum::{Bit, TypeArray, B0, B1};

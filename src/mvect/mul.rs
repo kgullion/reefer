@@ -221,9 +221,7 @@ impl<
 impl<
         A: BasisSet<M> + Len<Output: ArrayLength>,
         B: BasisSet<M> + Len<Output: ArrayLength>,
-        M: Metric
-            + MvMulType<CommutatorMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
-            + MvMulRun<CommutatorMarker, F, <M as MvMulType<CommutatorMarker, A, B>>::Output, A, B>,
+        M: Metric,
         F: Field,
     > BitAnd<Mvect<B, M, F>> for Mvect<A, M, F>
 where

@@ -9,6 +9,7 @@ pub mod pga2d;
 pub mod traits;
 mod utils;
 pub mod vga3d;
+pub mod vga6d;
 
 use basis::{Basis, ZeroVect};
 use field::Field;
@@ -45,7 +46,7 @@ impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> GeometricOb
 //     + BitOr           // ☑ ☑ Inner Product
 //     + Shl             // ☑ ☑ Left Contraction
 //     + Shr             // ☑ ☑ Right Contraction
-//     + Rem             // ☐ ☐
+//     + Rem             // ☐ ☐ ???
 //     + Fn(Rhs) -> Out  // ☐ ☐ Sandwich Product
 //     + Dual + Not      // ☑ ☐ Dual
 //     + Undual          // ☑ ☐ Undual

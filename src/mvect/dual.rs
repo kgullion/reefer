@@ -1,146 +1,135 @@
-use super::{basis_set::BasisSet, Mvect};
 use crate::{
-    basis::{Basis, BasisInfo, ZeroVect},
+    basis::dual::{DualPar, DualParity},
     field::Field,
     metric::Metric,
+    mvect::{basis_set::BasisSet, Mvect},
     ta,
     traits::{Dual, Undual},
-    utils::{
-        contains::{IdxOf, IndexOf},
-        typeset::{Union, UnionMerge},
-    },
+    utils::reverse::Reverse,
 };
 use core::ops;
 use generic_array::ArrayLength;
-use typenum::{bit::B0, Bit, Len, TypeArray, Unsigned, Xor};
+use typenum::{Bit, Len, TypeArray, Unsigned, Xor};
 
+// -------------------------------------------------------------------------------------
+// Dual
 impl<
         A: BasisSet<M>
             + Len<Output: ArrayLength>
-            + DualBasisType<M, Output: BasisSet<M> + Len<Output: ArrayLength>>
-            + DualBasisRun<<A as DualBasisType<M>>::Output, M, F>,
+            + DualBs<M, F, Output: BasisSet<M> + Len<Output: ArrayLength>>
+            + DualBsFlipper<M, F>,
         M: Metric,
-        F: Field,
+        F: Field + core::fmt::Debug,
     > Dual for Mvect<A, M, F>
 {
-    type Output = Mvect<<A as DualBasisType<M>>::Output, M, F>;
+    type Output = Mvect<<A as DualBs<M, F>>::Output, M, F>;
     fn dual(self) -> Self::Output {
-        // TODO: cycles can be built at comp time, letting us just swap indices around instead of
-        // building a new array, but I cba rn plus *maybe* the compiler will do it for us anyway
         let mut out = Self::Output::default();
-        <A as DualBasisRun<<A as DualBasisType<M>>::Output, M, F>>::dualize(&mut out.0, &self.0);
+        let data: &mut [F] = &mut out.0;
+        data.clone_from_slice(&self.0);
+        <A as DualBsFlipper<M, F>>::flip(data);
+        data.reverse();
         out
     }
 }
+
+// -------------------------------------------------------------------------------------
+// Undual
 impl<
         A: BasisSet<M>
             + Len<Output: ArrayLength>
-            + UndualBasisType<M, Output: BasisSet<M> + Len<Output: ArrayLength>>
-            + UndualBasisRun<<A as UndualBasisType<M>>::Output, M, F>,
+            + DualBs<M, F, Output: BasisSet<M> + Len<Output: ArrayLength>>
+            + DualBsFlipper<M, F>,
         M: Metric,
-        F: Field,
+        F: Field + core::fmt::Debug,
     > Undual for Mvect<A, M, F>
 {
-    type Output = Mvect<<A as UndualBasisType<M>>::Output, M, F>;
+    type Output = Mvect<<A as DualBs<M, F>>::Output, M, F>;
     fn undual(self) -> Self::Output {
-        // TODO: cycles can be built at comp time, letting us just swap indices around instead of
-        // building a new array, but I cba rn plus *maybe* the compiler will do it for us anyway
         let mut out = Self::Output::default();
-        <A as UndualBasisRun<<A as UndualBasisType<M>>::Output, M, F>>::undualize(
-            &mut out.0, &self.0,
-        );
+        let data: &mut [F] = &mut out.0;
+        data.clone_from_slice(&self.0);
+        data.reverse();
+        <A as DualBsFlipper<M, F>>::flip(data);
         out
     }
 }
+
 // ----
-pub trait DualBasisType<M: Metric>: TypeArray {
-    type Output: TypeArray;
+pub trait DualBs<M: Metric, F: Field>: BasisSet<M> {
+    type Output: BasisSet<M>;
 }
-impl<M: Metric> DualBasisType<M> for ta![] {
-    type Output = ta![];
-}
-impl<
-        U: Unsigned + ops::BitXor<M::Psuedoscalar>,
-        A: BasisSet<M> + DualBasisType<M, Output: UnionMerge<ta![Xor<U, M::Psuedoscalar>]>>,
-        M: Metric,
-    > DualBasisType<M> for ta![U | A]
+impl<A: BasisSet<M> + DualMap<M, Output: Reverse<Output: BasisSet<M>>>, M: Metric, F: Field>
+    DualBs<M, F> for A
 {
-    type Output = Union<<A as DualBasisType<M>>::Output, ta![Xor<U, M::Psuedoscalar>]>;
+    type Output = <<A as DualMap<M>>::Output as Reverse>::Output;
 }
-pub trait DualBasisRun<OUT: BasisSet<M>, M: Metric, F: Field>: BasisSet<M> {
-    type Dual;
-    fn dualize(out: &mut [F], data: &[F]);
+
+// ----
+pub trait DualBsFlipper<M: Metric, F: Field>: BasisSet<M> {
+    fn flip(data: &mut [F]);
 }
-impl<M: Metric, F: Field> DualBasisRun<ta![], M, F> for ta![] {
-    type Dual = ZeroVect;
-    fn dualize(_out: &mut [F], _data: &[F]) {}
+impl<M: Metric, F: Field> DualBsFlipper<M, F> for ta![] {
+    fn flip(_data: &mut [F]) {}
 }
-impl<
-        OUT: BasisSet<M> + IndexOf<<<Basis<U, M, B0> as Dual>::Output as BasisInfo>::Mask>,
-        U: Unsigned + ops::BitXor<M::Psuedoscalar>,
-        A: DualBasisRun<OUT, M, F>,
-        M: Metric,
-        F: Field,
-    > DualBasisRun<OUT, M, F> for ta![U | A]
+impl<U: Unsigned, A: BasisSet<M>, M: Metric, F: Field> DualBsFlipper<M, F> for ta![U | A]
 where
-    Basis<U, M, B0>: Dual<Output: BasisInfo<Parity: Bit>>,
     ta![U | A]: BasisSet<M>,
+    A: DualBsFlipper<M, F>,
+    U: DualPar<M>,
+    F: core::fmt::Debug,
 {
-    type Dual = <Basis<U, M, B0> as Dual>::Output;
-    fn dualize(out: &mut [F], data: &[F]) {
-        // get the index of the dual basis in the output array and set its value
-        let i = IdxOf::<OUT, <Self::Dual as BasisInfo>::Mask>::USIZE;
-        if <Self::Dual as BasisInfo>::Parity::BOOL {
-            out[i] = -data[0].clone();
-        } else {
-            out[i] = data[0].clone();
+    fn flip(data: &mut [F]) {
+        if DualParity::<U, M>::BOOL {
+            data[0] = -data[0].clone();
         }
-        A::dualize(&mut out[1..], &data[1..]);
+        <A as DualBsFlipper<M, F>>::flip(&mut data[1..]);
     }
 }
+
 // ----
-pub trait UndualBasisType<M: Metric>: TypeArray {
+pub trait DualMap<M: Metric>: TypeArray {
     type Output: TypeArray;
 }
-impl<M: Metric> UndualBasisType<M> for ta![] {
+impl<M: Metric> DualMap<M> for ta![] {
     type Output = ta![];
 }
-impl<
-        U: Unsigned + ops::BitXor<M::Psuedoscalar>,
-        A: BasisSet<M> + UndualBasisType<M, Output: UnionMerge<ta![Xor<U, M::Psuedoscalar>]>>,
-        M: Metric,
-    > UndualBasisType<M> for ta![U | A]
+impl<U: Unsigned + ops::BitXor<M::Psuedoscalar>, A: DualMap<M>, M: Metric> DualMap<M>
+    for ta![U | A]
 {
-    type Output = Union<<A as UndualBasisType<M>>::Output, ta![Xor<U, M::Psuedoscalar>]>;
+    type Output = ta![Xor<U, M::Psuedoscalar> | A::Output];
 }
-trait UndualBasisRun<OUT: BasisSet<M>, M: Metric, F: Field>: BasisSet<M> {
-    type Undual;
-    fn undualize(out: &mut [F], data: &[F]);
-}
-impl<M: Metric, F: Field> UndualBasisRun<ta![], M, F> for ta![] {
-    type Undual = ZeroVect;
-    fn undualize(_out: &mut [F], _data: &[F]) {}
-}
-impl<
-        OUT: BasisSet<M> + IndexOf<<<Basis<U, M, B0> as Undual>::Output as BasisInfo>::Mask>,
-        U: Unsigned + ops::BitXor<M::Psuedoscalar>,
-        A: UndualBasisRun<OUT, M, F>,
-        M: Metric,
-        F: Field,
-    > UndualBasisRun<OUT, M, F> for ta![U | A]
-where
-    Basis<U, M, B0>: Undual<Output: BasisInfo<Parity: Bit>>,
-    ta![U | A]: BasisSet<M>,
-{
-    type Undual = <Basis<U, M, B0> as Undual>::Output;
-    fn undualize(out: &mut [F], data: &[F]) {
-        // get the index of the dual basis in the output array and set its value
-        let i = IdxOf::<OUT, <Self::Undual as BasisInfo>::Mask>::USIZE;
-        if <Self::Undual as BasisInfo>::Parity::BOOL {
-            out[i] = -data[0].clone();
-        } else {
-            out[i] = data[0].clone();
-        }
-        A::undualize(&mut out[1..], &data[1..]);
+
+// tests
+#[cfg(test)]
+mod tests {
+    use crate::{
+        traits::{Dual, Undual},
+        vga3d::{scalar as c, x, xy, xyz, xz, y, yz, z},
+    };
+
+    #[test]
+    fn test_dual_vga() {
+        // !(1 + 2x + 3y + 5z + 7xy + 11xz + 13yz + 17xyz)
+        // = -17 - 13x + 11y - 7z + 5xy - 3xz + 2yz + 1xyz
+        let a =
+            1.0 * c + 2.0 * x + 3.0 * y + 5.0 * z + 7.0 * xy + 11.0 * xz + 13.0 * yz + 17.0 * xyz;
+
+        let expected =
+            -17.0 * c - 13.0 * x + 11.0 * y - 7.0 * z + 5.0 * xy - 3.0 * xz + 2.0 * yz + 1.0 * xyz;
+        let actual = a.dual();
+
+        println!("a = {}", a);
+        println!("expected = {}", expected);
+        println!("actual   = {}", actual);
+        println!("diff     = {}", expected - actual);
+
+        assert!(expected == actual);
+    }
+    #[test]
+    fn test_undual_vga() {
+        let a =
+            1.0 * c + 2.0 * x + 3.0 * y + 5.0 * z + 7.0 * xy + 11.0 * xz + 13.0 * yz + 17.0 * xyz;
+        assert!(a.dual().undual() == a);
     }
 }

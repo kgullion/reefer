@@ -117,7 +117,7 @@ impl<U: Unsigned + CountOf<B1, Count: At<U1, Output: Bit> + Add<B1>>> ConjugateP
 mod tests {
     use super::*;
     #[allow(unused_imports)]
-    use typenum::{B0, B1, U0, U1, U2, U3, U4, U5, U6, U7, U8, U9};
+    use typenum::{B0, B1, U0, U1, U2, U3, U4, U5, U55, U56, U57, U59, U6, U7, U8, U9};
     /// U0 represents the empty set, so the parity of the symmetric difference is always false.
     #[test]
     fn test_swap_parity_scalar() {
@@ -203,5 +203,17 @@ mod tests {
         assert_eq!(SwapParity::<U7, U7>::BOOL, true); // e123 * e123 = -1
         assert_eq!(SwapParity::<U8, U8>::BOOL, false); // e4 * e4 = 1
         assert_eq!(SwapParity::<U9, U9>::BOOL, true); // e14 * e14 = -1
+    }
+    /// Test a few bigger swaps.
+    #[test]
+    fn test_swap_parity_big() {
+        // e123 * e456
+        assert!(SwapParity::<U7, U56>::BOOL == false);
+        // e123 * e1456
+        assert!(SwapParity::<U7, U57>::BOOL == false);
+        // e123 * e12456
+        assert!(SwapParity::<U7, U59>::BOOL == true);
+        // e12356 * e12456
+        assert!(SwapParity::<U55, U59>::BOOL == false);
     }
 }
