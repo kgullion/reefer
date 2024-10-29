@@ -2,30 +2,27 @@ use crate::{
     basis::{Basis, ZeroVect},
     collector::CartCollector,
     field::Field,
+    marker::{
+        CommutatorMarker, FatDotMarker, GeoProdMarker, InnerProdMarker, LeftContractionMarker,
+        MvMulMarker, OuterProdMarker, RightContractionMarker, ScalarProdMarker,
+    },
     metric::Metric,
     mvect::{basis_set::BasisSet, Mvect},
     ta,
     traits::{Commutator, Dual, FatDot, Inverse, Sandwich, ScalarProduct, Undual},
     utils::{
-        parity::{SwapPar, SwapParity},
         typeset::{Union, UnionMerge},
         Branch, If,
     },
 };
 use core::marker::PhantomData;
-use core::ops::{BitAnd, BitOr, BitXor, Mul};
 use generic_array::{ArrayLength, GenericArray};
-use typenum::{
-    And, Bit, Eq, IsEqual, IsNotEqual, Len, NotEq, Or, Prod, TypeArray, Unsigned, Xor, B0, B1, U0,
-};
+use typenum::{Bit, Len, Prod, TypeArray, Unsigned, Xor, B0, B1};
 
 // --------------------------------------------
 // multivector multiplication
 // ----
-// Helper trait for multiplication marker structs (the K type parameter in MvMul etc)
-pub trait MvMulMarker<L: Unsigned, R: Unsigned>: Sized {
-    type Output: Bit;
-}
+
 // MvMul - does the runtime work
 pub trait MvMulRun<K, F, OUT, A: BasisSet<Self>, B: BasisSet<Self>>: Metric + Sized {
     fn mv_mul(out: &mut [F], left: &[F], right: &[F]);
@@ -72,7 +69,7 @@ impl<
         K: MvMulMarker<L, R>,
     > MvMulRunInner<K, F, OUT, L, ta![R | B]> for M
 where
-    Basis<L, M, B0>: Mul<Basis<R, M, B0>, Output: CartCollector<F, OUT>>,
+    Basis<L, M, B0>: core::ops::Mul<Basis<R, M, B0>, Output: CartCollector<F, OUT>>,
 {
     #[inline(always)]
     fn mv_mul_inner(out: &mut [F], left: &F, right: &[F]) {
@@ -122,7 +119,7 @@ impl<L: Unsigned, R: Unsigned, B: BasisSet<M>, M: Metric + MvMulTypeInner<K, L, 
     MvMulTypeInner<K, L, ta![R | B]> for M
 where
     K: MvMulMarker<L, R>,
-    Basis<L, M, B0>: Mul<Basis<R, M, B0>, Output: IntoBasisSet<Output: BasisSet<M>>>,
+    Basis<L, M, B0>: core::ops::Mul<Basis<R, M, B0>, Output: IntoBasisSet<Output: BasisSet<M>>>,
     <K as MvMulMarker<L, R>>::Output: Branch<
         <Prod<Basis<L, M, B0>, Basis<R, M, B0>> as IntoBasisSet>::Output,
         ta![],
@@ -175,11 +172,6 @@ fn mv_mul_runner<
 }
 // ----
 // Mul - geometric product of two multivectors
-pub struct GeoProdMarker;
-impl<L: Unsigned, R: Unsigned> MvMulMarker<L, R> for GeoProdMarker {
-    // every element of the cartesian product of L and R is in the result
-    type Output = B1;
-}
 impl<
         A: BasisSet<M> + Len<Output: ArrayLength>,
         B: BasisSet<M> + Len<Output: ArrayLength>,
@@ -199,13 +191,6 @@ impl<
 }
 // ----
 // Outer Product
-pub struct OuterProdMarker;
-impl<L: Unsigned + BitAnd<R, Output: IsEqual<U0>>, R: Unsigned> MvMulMarker<L, R>
-    for OuterProdMarker
-{
-    // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉ₛ+ₜ -> L&R==0 // no overlap
-    type Output = Eq<And<L, R>, U0>;
-}
 impl<
         A: BasisSet<M> + Len<Output: ArrayLength>,
         B: BasisSet<M> + Len<Output: ArrayLength>,
@@ -230,9 +215,9 @@ impl<
         B: BasisSet<M> + Len<Output: ArrayLength>,
         M: Metric,
         F: Field,
-    > BitAnd<Mvect<B, M, F>> for Mvect<A, M, F>
+    > core::ops::BitAnd<Mvect<B, M, F>> for Mvect<A, M, F>
 where
-    Self: Dual<Output: BitXor<<Mvect<B, M, F> as Dual>::Output, Output: Undual>>,
+    Self: Dual<Output: core::ops::BitXor<<Mvect<B, M, F> as Dual>::Output, Output: Undual>>,
     Mvect<B, M, F>: Dual,
 {
     type Output = <Xor<<Self as Dual>::Output, <Mvect<B, M, F> as Dual>::Output> as Undual>::Output;
@@ -243,15 +228,6 @@ where
 }
 // ----
 // Commutator Product
-pub struct CommutatorMarker;
-impl<
-        L: Unsigned + SwapPar<R, Parity: BitXor<SwapParity<R, L>, Output: Bit>>,
-        R: Unsigned + SwapPar<L>,
-    > MvMulMarker<L, R> for CommutatorMarker
-{
-    // (a*b - b*a)/2 -> Not<IsReverse<Prod<L,R>>> // if an element is it's own reverse, it's not in the result
-    type Output = Xor<SwapParity<L, R>, SwapParity<R, L>>;
-}
 impl<
         A: BasisSet<M> + Len<Output: ArrayLength>,
         B: BasisSet<M> + Len<Output: ArrayLength>,
@@ -271,13 +247,6 @@ impl<
 }
 // ----
 // Inner Product
-pub struct InnerProdMarker;
-impl<L: Unsigned + BitAnd<R, Output: IsNotEqual<U0>>, R: Unsigned> MvMulMarker<L, R>
-    for InnerProdMarker
-{
-    // Opposite selection to outer product
-    type Output = NotEq<And<L, R>, U0>;
-}
 impl<
         A: BasisSet<M> + Len<Output: ArrayLength>,
         B: BasisSet<M> + Len<Output: ArrayLength>,
@@ -297,13 +266,6 @@ impl<
 }
 // ----
 // Left Contraction
-pub struct LeftContractionMarker;
-impl<L: Unsigned + BitAnd<R, Output: IsEqual<L>>, R: Unsigned> MvMulMarker<L, R>
-    for LeftContractionMarker
-{
-    // C<<D = Σ〈〈C〉ₛ〈D〉ₜ〉ₜ-ₛ // L⊆R = L&R==L
-    type Output = Eq<And<L, R>, L>;
-}
 impl<
         A: BasisSet<M> + Len<Output: ArrayLength>,
         B: BasisSet<M> + Len<Output: ArrayLength>,
@@ -329,13 +291,6 @@ impl<
 }
 // ----
 // Right Contraction
-pub struct RightContractionMarker;
-impl<L: Unsigned + BitAnd<R, Output: IsEqual<R>>, R: Unsigned> MvMulMarker<L, R>
-    for RightContractionMarker
-{
-    // C>>D = Σ〈〈C〉ₛ〈D〉ₜ〉ₛ-ₜ // R⊆L = L&R==R
-    type Output = Eq<And<L, R>, R>;
-}
 impl<
         A: BasisSet<M> + Len<Output: ArrayLength>,
         B: BasisSet<M> + Len<Output: ArrayLength>,
@@ -362,11 +317,6 @@ impl<
 
 // ----
 // Scalar Product
-pub struct ScalarProdMarker;
-impl<L: Unsigned + IsEqual<R>, R: Unsigned> MvMulMarker<L, R> for ScalarProdMarker {
-    // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉₀ -> L==R // complete overlap
-    type Output = Eq<L, R>;
-}
 impl<
         A: BasisSet<M> + Len<Output: ArrayLength>,
         B: BasisSet<M> + Len<Output: ArrayLength>,
@@ -386,14 +336,6 @@ impl<
 }
 // ----
 // FatDot Product
-pub struct FatDotMarker;
-impl<L: Unsigned, R: Unsigned> MvMulMarker<L, R> for FatDotMarker
-where
-    L: BitAnd<R, Output: IsEqual<L, Output: BitOr<Eq<And<L, R>, R>, Output: Bit>> + IsEqual<R>>,
-{
-    // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉|ₜ-ₛ| // L⊆R || R⊆L
-    type Output = Or<Eq<And<L, R>, L>, Eq<And<L, R>, R>>;
-}
 impl<
         A: BasisSet<M> + Len<Output: ArrayLength>,
         B: BasisSet<M> + Len<Output: ArrayLength>,
@@ -411,8 +353,15 @@ impl<
         out
     }
 }
-
 // --------------------------------------------
+// Field * Basis
+impl<F: Field, M: Metric> core::ops::Mul<F> for ZeroVect<M> {
+    type Output = Mvect<ta![], M, F>;
+    #[inline(always)]
+    fn mul(self, _: F) -> Self::Output {
+        Self::Output::default()
+    }
+}
 impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B0> {
     type Output = Mvect<ta![U], M, F>;
     #[inline(always)]
@@ -454,7 +403,8 @@ impl<
         F: Field,
     > Sandwich<Mvect<B, M, F>> for Mvect<A, M, F>
 where
-    Mvect<A, M, F>: Inverse + Mul<Mvect<B, M, F>, Output: Mul<<Mvect<A, M, F> as Inverse>::Output>>,
+    Mvect<A, M, F>: Inverse
+        + core::ops::Mul<Mvect<B, M, F>, Output: core::ops::Mul<<Mvect<A, M, F> as Inverse>::Output>>,
 {
     type Output = Prod<Prod<Mvect<A, M, F>, Mvect<B, M, F>>, <Mvect<A, M, F> as Inverse>::Output>;
     #[inline(always)]

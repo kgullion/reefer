@@ -1,13 +1,12 @@
 use crate::{
-    basis::dual::{DualPar, DualParity},
     field::Field,
     metric::Metric,
     mvect::{basis_set::BasisSet, Mvect},
+    parity::{DualPar, DualParity},
     ta,
     traits::{Dual, Undual},
     utils::reverse::Reverse,
 };
-use core::ops;
 use generic_array::ArrayLength;
 use typenum::{Bit, Len, TypeArray, Unsigned, Xor};
 
@@ -98,7 +97,7 @@ pub trait DualMap<M: Metric>: TypeArray {
 impl<M: Metric> DualMap<M> for ta![] {
     type Output = ta![];
 }
-impl<U: Unsigned + ops::BitXor<M::Psuedoscalar>, A: DualMap<M>, M: Metric> DualMap<M>
+impl<U: Unsigned + core::ops::BitXor<M::Psuedoscalar>, A: DualMap<M>, M: Metric> DualMap<M>
     for ta![U | A]
 {
     type Output = ta![Xor<U, M::Psuedoscalar> | A::Output];

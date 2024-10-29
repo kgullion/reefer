@@ -1,6 +1,5 @@
 use generic_array::ArrayLength;
-use num_traits::{one, One, Zero};
-use typenum::{Bit, Len, Sum, Unsigned, B0, B1, U0};
+use typenum::{Len, Unsigned, B0, B1, U0};
 
 use crate::{
     basis::{Basis, ZeroVect},
@@ -14,7 +13,6 @@ use crate::{
         typeset::{Union, UnionMerge},
     },
 };
-use core::ops::{Add, Sub};
 
 // --------------------------------------------
 // MvAdd - add two multivectors
@@ -46,7 +44,7 @@ impl<
         RBS: BasisSet<M> + Len<Output: ArrayLength>,
         M: Metric,
         F: Field + for<'a> CollectInto<F, MvAdd, &'a mut [F], LBS, RBS>,
-    > Add<&Mvect<RBS, M, F>> for &Mvect<LBS, M, F>
+    > core::ops::Add<&Mvect<RBS, M, F>> for &Mvect<LBS, M, F>
 {
     type Output = Mvect<Union<LBS, RBS>, M, F>;
     #[inline(always)]
@@ -64,7 +62,7 @@ impl<
         RBS: BasisSet<M> + Len<Output: ArrayLength>,
         M: Metric,
         F: Field + for<'a> CollectInto<F, MvAdd, &'a mut [F], LBS, RBS>,
-    > Add<Mvect<RBS, M, F>> for Mvect<LBS, M, F>
+    > core::ops::Add<Mvect<RBS, M, F>> for Mvect<LBS, M, F>
 {
     type Output = Mvect<Union<LBS, RBS>, M, F>;
     #[inline(always)]
@@ -101,7 +99,7 @@ impl<
         RBS: BasisSet<M> + Len<Output: ArrayLength>,
         M: Metric,
         F: Field + for<'a> CollectInto<F, MvSub, &'a mut [F], LBS, RBS>,
-    > Sub<&Mvect<RBS, M, F>> for &Mvect<LBS, M, F>
+    > core::ops::Sub<&Mvect<RBS, M, F>> for &Mvect<LBS, M, F>
 {
     type Output = Mvect<Union<LBS, RBS>, M, F>;
     #[inline(always)]
@@ -118,7 +116,7 @@ impl<
         RBS: BasisSet<M> + Len<Output: ArrayLength>,
         M: Metric,
         F: Field + for<'a> CollectInto<F, MvSub, &'a mut [F], LBS, RBS>,
-    > Sub<Mvect<RBS, M, F>> for Mvect<LBS, M, F>
+    > core::ops::Sub<Mvect<RBS, M, F>> for Mvect<LBS, M, F>
 {
     type Output = Mvect<Union<LBS, RBS>, M, F>;
     #[inline(always)]

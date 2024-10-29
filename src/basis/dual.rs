@@ -2,13 +2,10 @@
 use crate::{
     basis::{into::IntoBasis, Basis, ZeroVect},
     metric::Metric,
+    parity::{DualPar, DualParity, ReversePar, ReverseParity, UndualPar, UndualParity},
     traits::{Dual, Undual},
-    utils::{
-        count::CountOf,
-        parity::{ReversePar, ReverseParity, SwapPar, SwapParity},
-    },
+    utils::count::CountOf,
 };
-use core::ops::{BitXor, Not};
 use typenum::{Bit, Unsigned, Xor};
 
 // // PsuedoScalar
@@ -31,8 +28,8 @@ use typenum::{Bit, Unsigned, Xor};
 // ------------------------
 impl<
         U: Unsigned
-            + BitXor<M::Psuedoscalar, Output: Unsigned>
-            + DualPar<M, Parity: BitXor<S, Output: Bit>>,
+            + core::ops::BitXor<M::Psuedoscalar, Output: Unsigned>
+            + DualPar<M, Parity: core::ops::BitXor<S, Output: Bit>>,
         M: Metric,
         S: Bit,
     > Dual for Basis<U, M, S>
@@ -53,8 +50,8 @@ impl<M: Metric> Dual for ZeroVect<M> {
 
 impl<
         U: Unsigned
-            + BitXor<M::Psuedoscalar, Output: Unsigned>
-            + UndualPar<M, Parity: BitXor<S, Output: Bit>>,
+            + core::ops::BitXor<M::Psuedoscalar, Output: Unsigned>
+            + UndualPar<M, Parity: core::ops::BitXor<S, Output: Bit>>,
         M: Metric,
         S: Bit,
     > Undual for Basis<U, M, S>
@@ -71,27 +68,6 @@ impl<M: Metric> Undual for ZeroVect<M> {
     fn undual(self) -> Self::Output {
         Self::Output::default()
     }
-}
-
-// ------------------------
-pub type DualParity<U, M> = <U as DualPar<M>>::Parity;
-type UndualParity<U, M> = <U as UndualPar<M>>::Parity;
-
-pub trait DualPar<M>: Unsigned {
-    type Parity: Bit;
-}
-impl<U: Unsigned + SwapPar<M::Psuedoscalar, Parity: Bit>, M: Metric> DualPar<M> for U {
-    type Parity = SwapParity<U, M::Psuedoscalar>;
-}
-
-pub trait UndualPar<M>: Unsigned {
-    type Parity: Bit;
-}
-impl<U: Unsigned + SwapPar<M::Psuedoscalar>, M: Metric> UndualPar<M> for U
-where
-    M::Psuedoscalar: ReversePar<Parity: BitXor<SwapParity<U, M::Psuedoscalar>, Output: Bit>>,
-{
-    type Parity = Xor<ReverseParity<M::Psuedoscalar>, SwapParity<U, M::Psuedoscalar>>;
 }
 
 #[cfg(test)]

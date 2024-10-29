@@ -1,6 +1,5 @@
 pub mod contains;
 pub mod count;
-pub mod parity;
 pub mod reverse;
 pub mod typeset;
 use crate::ta;

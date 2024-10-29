@@ -5,10 +5,9 @@ use crate::{
     mvect::{basis_set::BasisSet, Mvect},
     ta,
     traits::FatDot,
-    utils::typeset::{Union, UnionMerge},
 };
 use generic_array::ArrayLength;
-use typenum::{Bit, Len, Sum, Unsigned, B0, B1, U0};
+use typenum::{Bit, Len, Sum, Unsigned, B0, B1};
 
 // -------------------------------------------------------------------------------------
 // ZeroVect + ZeroVect

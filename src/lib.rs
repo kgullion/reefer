@@ -2,9 +2,10 @@
 pub mod basis;
 mod collector;
 pub mod field;
-mod macros;
+mod marker;
 pub mod metric;
 pub mod mvect;
+pub mod parity;
 pub mod pga2d;
 pub mod traits;
 mod utils;
@@ -31,7 +32,6 @@ pub mod vga6d;
 //     + BitOr           // ☑ ☑ Inner Product
 //     + Shl             // ☑ ☑ Left Contraction
 //     + Shr             // ☑ ☑ Right Contraction
-//     + Sandwich        // ☐ ☐ Sandwich Product
 //     + Dual + Not      // ☑ ☑ Dual
 //     + Undual          // ☑ ☑ Undual
 //     + Rem             // ☑ ☑ Graded
@@ -40,9 +40,22 @@ pub mod vga6d;
 //     + Involute        // ☑ ☑ Involute
 //     + Reverse         // ☑ ☑ Reverse
 //     + Conjugate       // ☑ ☑ Conjugate
+//     + Sandwich        // ☐ ☐ Sandwich Product
 //     + Inverse         // ☐ ☐ Inverse
 //     + Div             // ☐ ☐ Division
 //     + Normalize       // ☑ ☐ Normalize
 //     + Exponential     // ☐ ☐ Exponential
 //     + Logarithm       // ☐ ☐ Logarithm
 // {}
+
+/// just typenum::tarr but with elixir style [ a, b, c | rest ] syntax
+#[macro_export]
+macro_rules! ta {
+    () => ( typenum::ATerm );
+    ($n:ty | $tail:ty ) => ( typenum::TArr<$n, $tail>);
+    ($n:ty, $($tail:ty),+ | $rest:ty) => ( typenum::TArr<$n, ta![$($tail),+ | $rest]>);
+    ($n:ty) => ( typenum::TArr<$n, typenum::ATerm> );
+    ($n:ty,) => ( typenum::TArr<$n, typenum::ATerm> );
+    ($n:ty, $($tail:ty),+) => ( typenum::TArr<$n, ta![$($tail),+]> );
+    ($n:ty, $($tail:ty),+,) => ( typenum::TArr<$n, ta![$($tail),+]> );
+}

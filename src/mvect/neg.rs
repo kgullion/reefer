@@ -2,11 +2,11 @@ use crate::{
     field::Field,
     metric::Metric,
     mvect::{basis_set::BasisSet, Mvect},
-    ta,
-    traits::{Conjugate, Involute, Reverse},
-    utils::parity::{
+    parity::{
         ConjugatePar, ConjugateParity, InvolutePar, InvoluteParity, ReversePar, ReverseParity,
     },
+    ta,
+    traits::{Conjugate, Involute, Reverse},
 };
 use generic_array::ArrayLength;
 use typenum::{Bit, Len, TypeArray, Unsigned};
@@ -45,9 +45,11 @@ trait InvoluteBs<F: Field>: TypeArray {
     fn involute(data: &mut [F]);
 }
 impl<F: Field> InvoluteBs<F> for ta![] {
+    #[inline(always)]
     fn involute(_: &mut [F]) {}
 }
 impl<U: Unsigned + InvolutePar, A: InvoluteBs<F>, F: Field> InvoluteBs<F> for ta![U | A] {
+    #[inline(always)]
     fn involute(data: &mut [F]) {
         if InvoluteParity::<U>::BOOL {
             data[0] = -data[0].clone();
@@ -74,9 +76,11 @@ trait ReverseBs<F: Field>: TypeArray {
     fn reverse(data: &mut [F]);
 }
 impl<F: Field> ReverseBs<F> for ta![] {
+    #[inline(always)]
     fn reverse(_: &mut [F]) {}
 }
 impl<U: Unsigned + ReversePar, A: ReverseBs<F>, F: Field> ReverseBs<F> for ta![U | A] {
+    #[inline(always)]
     fn reverse(data: &mut [F]) {
         if ReverseParity::<U>::BOOL {
             data[0] = -data[0].clone();
@@ -103,9 +107,11 @@ trait ConjugateBs<F: Field>: TypeArray {
     fn conjugate(data: &mut [F]);
 }
 impl<F: Field> ConjugateBs<F> for ta![] {
+    #[inline(always)]
     fn conjugate(_: &mut [F]) {}
 }
 impl<U: Unsigned + ConjugatePar, A: ConjugateBs<F>, F: Field> ConjugateBs<F> for ta![U | A] {
+    #[inline(always)]
     fn conjugate(data: &mut [F]) {
         if ConjugateParity::<U>::BOOL {
             data[0] = -data[0].clone();

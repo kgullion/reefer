@@ -1,15 +1,9 @@
 use crate::{
     basis::{into::IntoBasis, Basis, ZeroVect},
-    field::Field,
     metric::{Metric, TritMul, TritXor},
-    mvect::Mvect,
-    ta,
-    utils::{
-        parity::{SwapPar, SwapParity},
-        Branch, If,
-    },
+    parity::{SwapPar, SwapParity},
+    utils::{Branch, If},
 };
-use core::ops::{BitAnd, BitXor, Mul};
 use typenum::{And, Bit, Eq, IsEqual, Prod, Unsigned, Xor, U0};
 
 // -------------------------------------------------------------------------------------
@@ -67,7 +61,7 @@ impl<U: Unsigned, M: Metric, S: Bit> core::ops::Mul<ZeroVect<M>> for Basis<U, M,
 }
 // L * R accounts for parity from the metric, the swaps, the left basis parity, and the right basis parity.
 impl<
-        L: Unsigned + SwapPar<R, Parity: Bit> + BitXor<R, Output: Unsigned>,
+        L: Unsigned + SwapPar<R, Parity: Bit> + core::ops::BitXor<R, Output: Unsigned>,
         R: Unsigned,
         M: Metric
             + TritMul<
@@ -84,7 +78,7 @@ impl<
                     >,
                 >,
             >,
-        LS: Bit + BitXor<RS>,
+        LS: Bit + core::ops::BitXor<RS>,
         RS: Bit,
     > core::ops::Mul<Basis<R, M, RS>> for Basis<L, M, LS>
 {
@@ -126,8 +120,8 @@ impl<U: Unsigned, M: Metric, S: Bit> core::ops::BitXor<ZeroVect<M>> for Basis<U,
 impl<LU: Unsigned, RU: Unsigned, M: Metric, LS: Bit, RS: Bit> core::ops::BitXor<Basis<RU, M, RS>>
     for Basis<LU, M, LS>
 where
-    Self: Mul<Basis<RU, M, RS>>,
-    LU: BitAnd<
+    Self: core::ops::Mul<Basis<RU, M, RS>>,
+    LU: core::ops::BitAnd<
         RU,
         Output: IsEqual<
             U0,
@@ -173,8 +167,8 @@ impl<U: Unsigned, M: Metric, S: Bit> core::ops::BitOr<ZeroVect<M>> for Basis<U, 
 impl<LU: Unsigned, RU: Unsigned, M: Metric, LS: Bit, RS: Bit> core::ops::BitOr<Basis<RU, M, RS>>
     for Basis<LU, M, LS>
 where
-    Self: Mul<Basis<RU, M, RS>>,
-    LU: BitAnd<
+    Self: core::ops::Mul<Basis<RU, M, RS>>,
+    LU: core::ops::BitAnd<
         RU,
         Output: IsEqual<
             U0,
@@ -220,8 +214,8 @@ impl<U: Unsigned, M: Metric, S: Bit> core::ops::Shl<ZeroVect<M>> for Basis<U, M,
 impl<LU: Unsigned, RU: Unsigned, M: Metric, LS: Bit, RS: Bit> core::ops::Shl<Basis<RU, M, RS>>
     for Basis<LU, M, LS>
 where
-    Self: Mul<Basis<RU, M, RS>>,
-    LU: BitAnd<
+    Self: core::ops::Mul<Basis<RU, M, RS>>,
+    LU: core::ops::BitAnd<
         RU,
         Output: IsEqual<
             LU,
@@ -229,7 +223,7 @@ where
         >,
     >,
 {
-    //   Output =       LU & RU == LU    ?            LB        *       RB         : Zero
+    //   Output = if    LU & RU == LU  then                 LB * RB        else     Zero
     type Output = If<Eq<And<LU, RU>, LU>, Prod<Basis<LU, M, LS>, Basis<RU, M, RS>>, ZeroVect<M>>;
     #[inline(always)]
     fn shl(self, _: Basis<RU, M, RS>) -> Self::Output {
@@ -275,12 +269,17 @@ where
     }
 }
 
-// -------------------------------------------------------------------------------------
-// Field Products
-impl<F: Field, M: Metric> core::ops::Mul<F> for ZeroVect<M> {
-    type Output = Mvect<ta![], M, F>;
-    #[inline(always)]
-    fn mul(self, _: F) -> Self::Output {
-        Self::Output::default()
+#[cfg(test)]
+mod tests {
+    use crate::vga6d::*;
+
+    #[test]
+    fn test_geo_prod() {
+        assert!(e12 * e34 == e1234);
+        assert!(e34 * e12 == e1234);
+        assert!(e12 * e3 == e123);
+        assert!(e3 * e12 == e123);
+        assert!(e12 * e4 == e124);
+        assert!(e4 * e12 == e124);
     }
 }

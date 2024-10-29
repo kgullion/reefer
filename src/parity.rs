@@ -1,8 +1,10 @@
-use crate::utils::{
-    contains::{At, Get},
-    count::{Count, CountOf},
+use crate::{
+    metric::Metric,
+    utils::{
+        contains::{At, Get},
+        count::{Count, CountOf},
+    },
 };
-use core::ops::{Add, BitAnd, BitXor};
 use typenum::{And, Bit, UInt, Unsigned, Xor, B0, B1, U0, U1};
 
 // ---------------------------------------------------------------------------------------
@@ -68,12 +70,34 @@ impl<
         LU: Unsigned + SwapParInner<RU, Xor<LP, LB>, Xor<TP, And<RB, Xor<LP, LB>>>>, // 🫠
         RU: Unsigned,
         LB: Bit,
-        RB: Bit + BitAnd<Xor<LP, LB>>,
-        LP: Bit + BitXor<LB>,
-        TP: Bit + BitXor<And<RB, Xor<LP, LB>>>,
+        RB: Bit + core::ops::BitAnd<Xor<LP, LB>>,
+        LP: Bit + core::ops::BitXor<LB>,
+        TP: Bit + core::ops::BitXor<And<RB, Xor<LP, LB>>>,
     > SwapParInner<UInt<RU, RB>, LP, TP> for UInt<LU, LB>
 {
     type Parity = LU::Parity;
+}
+
+// ------------------------
+pub type DualParity<U, M> = <U as DualPar<M>>::Parity;
+pub type UndualParity<U, M> = <U as UndualPar<M>>::Parity;
+
+pub trait DualPar<M>: Unsigned {
+    type Parity: Bit;
+}
+impl<U: Unsigned + SwapPar<M::Psuedoscalar, Parity: Bit>, M: Metric> DualPar<M> for U {
+    type Parity = SwapParity<U, M::Psuedoscalar>;
+}
+
+pub trait UndualPar<M>: Unsigned {
+    type Parity: Bit;
+}
+impl<U: Unsigned + SwapPar<M::Psuedoscalar>, M: Metric> UndualPar<M> for U
+where
+    M::Psuedoscalar:
+        ReversePar<Parity: core::ops::BitXor<SwapParity<U, M::Psuedoscalar>, Output: Bit>>,
+{
+    type Parity = Xor<ReverseParity<M::Psuedoscalar>, SwapParity<U, M::Psuedoscalar>>;
 }
 
 // type IsInvolute = Flip<Get<U::Count, U0>>; // grade & 1 != 0
@@ -108,7 +132,9 @@ pub type ConjugateParity<U> = <U as ConjugatePar>::Parity;
 pub trait ConjugatePar: Unsigned {
     type Parity: Bit;
 }
-impl<U: Unsigned + CountOf<B1, Count: At<U1, Output: Bit> + Add<B1>>> ConjugatePar for U {
+impl<U: Unsigned + CountOf<B1, Count: At<U1, Output: Bit> + core::ops::Add<B1>>> ConjugatePar
+    for U
+{
     // (grade + 1) & 2 != 0
     type Parity = Get<Count<U, B1>, U1>;
 }
