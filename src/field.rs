@@ -3,7 +3,7 @@ use crate::{
     metric::Metric,
     mvect::{basis_set::BasisSet, Mvect},
 };
-use core::ops::Neg;
+use core::ops::{Mul, Neg};
 use generic_array::ArrayLength;
 use num_traits::{NumAssignOps, Signed};
 use typenum::{Bit, Len, Prod, Unsigned};
@@ -28,9 +28,9 @@ impl Field for f32 {} // TODO: implement for i32, f64, etc.
 //     }
 // }
 
-impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric> core::ops::Mul<Mvect<A, M, f32>> for f32
+impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric> Mul<Mvect<A, M, f32>> for f32
 where
-    Mvect<A, M, f32>: core::ops::Mul<f32>,
+    Mvect<A, M, f32>: Mul<f32>,
 {
     type Output = Prod<Mvect<A, M, f32>, f32>;
     #[inline(always)]
@@ -38,9 +38,9 @@ where
         rhs * self
     }
 }
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::Mul<Basis<U, M, S>> for f32
+impl<U: Unsigned, M: Metric, S: Bit> Mul<Basis<U, M, S>> for f32
 where
-    Basis<U, M, S>: core::ops::Mul<f32>,
+    Basis<U, M, S>: Mul<f32>,
 {
     type Output = Prod<Basis<U, M, S>, f32>;
     #[inline(always)]

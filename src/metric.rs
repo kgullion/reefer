@@ -5,6 +5,7 @@ use crate::{
         count::{Count, CountOf},
     },
 };
+use core::ops::BitAnd;
 use typenum::{
     And, Bit, Integer, IsNotEqual, NotEq, TypeArray, UInt, Unsigned, B0, B1, N1, P1, U0, Z0,
 };
@@ -47,7 +48,7 @@ pub trait DegenCheck<M: Metric>: Unsigned {
 }
 impl<U: Unsigned, M: Metric> DegenCheck<M> for U
 where
-    U: core::ops::BitAnd<M::ZeroMask, Output: IsNotEqual<U0, Output: Bit>>,
+    U: BitAnd<M::ZeroMask, Output: IsNotEqual<U0, Output: Bit>>,
 {
     type Output = NotEq<And<U, M::ZeroMask>, U0>;
 }
@@ -59,7 +60,7 @@ pub trait MaskPar<M: Metric>: Unsigned {
 }
 impl<U: Unsigned, M: Metric> MaskPar<M> for U
 where
-    U: core::ops::BitAnd<M::NegMask, Output: CountOf<B1, Count: At<U0, Output: Bit>>>,
+    U: BitAnd<M::NegMask, Output: CountOf<B1, Count: At<U0, Output: Bit>>>,
 {
     // U & M.neg & 1
     type Output = Get<Count<And<U, M::NegMask>, B1>, U0>;
@@ -77,7 +78,7 @@ impl Trit for P1 {}
 pub type TritProd<M, L, R> = <M as TritMul<L, R>>::Output;
 impl<L: Unsigned, R: Unsigned, M: Metric> TritMul<L, R> for M
 where
-    L: core::ops::BitAnd<R, Output: DegenCheck<M> + MaskPar<M>>,
+    L: BitAnd<R, Output: DegenCheck<M> + MaskPar<M>>,
     ta![IsDegen<M, And<L, R>>, MaskParity<M, And<L, R>>]: TritMulInner,
 {
     // Output = 0 if degenerate, -1 if odd parity, +1 if even parity

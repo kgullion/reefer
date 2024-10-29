@@ -7,6 +7,7 @@ use crate::{
         Branch, If,
     },
 };
+use core::ops::Rem;
 use typenum::{Bit, Eq, IsEqual, Unsigned, B1};
 
 // -------------------------------------------------------------------------------------
@@ -24,7 +25,7 @@ impl<U: Unsigned + CountOf<B1>, M: Metric, S: Bit> Grade for Basis<U, M, S> {
 }
 
 // -------------------------------------------------------------------------------------
-impl<G: Unsigned, M: Metric> core::ops::Rem<G> for ZeroVect<M> {
+impl<G: Unsigned, M: Metric> Rem<G> for ZeroVect<M> {
     type Output = ZeroVect<M>;
     #[inline(always)]
     fn rem(self, _: G) -> Self::Output {
@@ -36,7 +37,7 @@ impl<
         U: Unsigned + CountOf<B1>,
         M: Metric,
         S: Bit,
-    > core::ops::Rem<G> for Basis<U, M, S>
+    > Rem<G> for Basis<U, M, S>
 {
     type Output = If<Eq<G, U::Count>, Self, ZeroVect<M>>;
     #[inline(always)]

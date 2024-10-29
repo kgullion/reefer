@@ -2,6 +2,7 @@ use crate::{
     basis::{Basis, ZeroVect},
     metric::Metric,
 };
+use core::ops::BitAnd;
 use typenum::{And, Bit, Eq, IsEqual, Unsigned, B0, B1};
 
 // 0==0
@@ -30,14 +31,14 @@ impl<U: Unsigned, M: Metric, S: Bit> IsEqual<ZeroVect<M>> for Basis<U, M, S> {
 }
 // B==B <=> LU==RU && LS==RS
 impl<
-        LU: Unsigned + IsEqual<RU, Output: core::ops::BitAnd<Eq<LS, RS>, Output: Bit>>,
+        LU: Unsigned + IsEqual<RU, Output: BitAnd<Eq<LS, RS>, Output: Bit>>,
         RU: Unsigned,
         M: Metric,
         LS: Bit + IsEqual<RS>,
         RS: Bit,
     > IsEqual<Basis<RU, M, RS>> for Basis<LU, M, LS>
 where
-    Eq<LU, RU>: core::ops::BitAnd<Eq<LS, RS>>,
+    Eq<LU, RU>: BitAnd<Eq<LS, RS>>,
 {
     type Output = And<Eq<LU, RU>, Eq<LS, RS>>;
     #[inline(always)]

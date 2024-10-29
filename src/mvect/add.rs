@@ -1,6 +1,3 @@
-use generic_array::ArrayLength;
-use typenum::{Len, Unsigned, B0, B1, U0};
-
 use crate::{
     basis::{Basis, ZeroVect},
     collector::{CollectInto, Collector},
@@ -13,6 +10,9 @@ use crate::{
         typeset::{Union, UnionMerge},
     },
 };
+use core::ops::{Add, Sub};
+use generic_array::ArrayLength;
+use typenum::{Len, Unsigned, B0, B1, U0};
 
 // --------------------------------------------
 // MvAdd - add two multivectors
@@ -44,7 +44,7 @@ impl<
         RBS: BasisSet<M> + Len<Output: ArrayLength>,
         M: Metric,
         F: Field + for<'a> CollectInto<F, MvAdd, &'a mut [F], LBS, RBS>,
-    > core::ops::Add<&Mvect<RBS, M, F>> for &Mvect<LBS, M, F>
+    > Add<&Mvect<RBS, M, F>> for &Mvect<LBS, M, F>
 {
     type Output = Mvect<Union<LBS, RBS>, M, F>;
     #[inline(always)]
@@ -62,7 +62,7 @@ impl<
         RBS: BasisSet<M> + Len<Output: ArrayLength>,
         M: Metric,
         F: Field + for<'a> CollectInto<F, MvAdd, &'a mut [F], LBS, RBS>,
-    > core::ops::Add<Mvect<RBS, M, F>> for Mvect<LBS, M, F>
+    > Add<Mvect<RBS, M, F>> for Mvect<LBS, M, F>
 {
     type Output = Mvect<Union<LBS, RBS>, M, F>;
     #[inline(always)]
@@ -99,7 +99,7 @@ impl<
         RBS: BasisSet<M> + Len<Output: ArrayLength>,
         M: Metric,
         F: Field + for<'a> CollectInto<F, MvSub, &'a mut [F], LBS, RBS>,
-    > core::ops::Sub<&Mvect<RBS, M, F>> for &Mvect<LBS, M, F>
+    > Sub<&Mvect<RBS, M, F>> for &Mvect<LBS, M, F>
 {
     type Output = Mvect<Union<LBS, RBS>, M, F>;
     #[inline(always)]
@@ -116,7 +116,7 @@ impl<
         RBS: BasisSet<M> + Len<Output: ArrayLength>,
         M: Metric,
         F: Field + for<'a> CollectInto<F, MvSub, &'a mut [F], LBS, RBS>,
-    > core::ops::Sub<Mvect<RBS, M, F>> for Mvect<LBS, M, F>
+    > Sub<Mvect<RBS, M, F>> for Mvect<LBS, M, F>
 {
     type Output = Mvect<Union<LBS, RBS>, M, F>;
     #[inline(always)]
@@ -126,7 +126,7 @@ impl<
 }
 // -------------------------------------------------------------------------------------
 // ZeroVect + Field
-impl<M: Metric, F: Field> core::ops::Add<F> for ZeroVect<M> {
+impl<M: Metric, F: Field> Add<F> for ZeroVect<M> {
     type Output = Mvect<ta![U0], M, F>;
     #[inline(always)]
     fn add(self, rhs: F) -> Self::Output {
@@ -135,7 +135,7 @@ impl<M: Metric, F: Field> core::ops::Add<F> for ZeroVect<M> {
         out
     }
 }
-impl<M: Metric, F: Field> core::ops::Sub<F> for ZeroVect<M> {
+impl<M: Metric, F: Field> Sub<F> for ZeroVect<M> {
     type Output = Mvect<ta![U0], M, F>;
     #[inline(always)]
     fn sub(self, rhs: F) -> Self::Output {
@@ -145,7 +145,7 @@ impl<M: Metric, F: Field> core::ops::Sub<F> for ZeroVect<M> {
     }
 }
 // Basis + Field
-impl<U: Unsigned, M: Metric, F: Field> core::ops::Add<F> for Basis<U, M, B0>
+impl<U: Unsigned, M: Metric, F: Field> Add<F> for Basis<U, M, B0>
 where
     ta![U0]: UnionMerge<ta![U], Output: BasisSet<M> + Len<Output: ArrayLength> + IndexOf<U>>,
 {
@@ -158,7 +158,7 @@ where
         out
     }
 }
-impl<U: Unsigned, M: Metric, F: Field> core::ops::Add<F> for Basis<U, M, B1>
+impl<U: Unsigned, M: Metric, F: Field> Add<F> for Basis<U, M, B1>
 where
     ta![U0]: UnionMerge<ta![U], Output: BasisSet<M> + Len<Output: ArrayLength> + IndexOf<U>>,
 {
@@ -171,7 +171,7 @@ where
         out
     }
 }
-impl<U: Unsigned, M: Metric, F: Field> core::ops::Sub<F> for Basis<U, M, B0>
+impl<U: Unsigned, M: Metric, F: Field> Sub<F> for Basis<U, M, B0>
 where
     ta![U0]: UnionMerge<ta![U], Output: BasisSet<M> + Len<Output: ArrayLength> + IndexOf<U>>,
 {
@@ -184,7 +184,7 @@ where
         out
     }
 }
-impl<U: Unsigned, M: Metric, F: Field> core::ops::Sub<F> for Basis<U, M, B1>
+impl<U: Unsigned, M: Metric, F: Field> Sub<F> for Basis<U, M, B1>
 where
     ta![U0]: UnionMerge<ta![U], Output: BasisSet<M> + Len<Output: ArrayLength> + IndexOf<U>>,
 {

@@ -16,7 +16,7 @@ use crate::{
     },
 };
 use core::marker::PhantomData;
-use core::ops::{BitOr, BitXor, Mul, Shl, Shr};
+use core::ops::{BitAnd, BitOr, BitXor, Mul, Shl, Shr};
 use generic_array::{ArrayLength, GenericArray};
 use typenum::{Bit, Len, Prod, TypeArray, Unsigned, Xor, B0, B1};
 
@@ -64,9 +64,9 @@ impl<
         B: BasisSet<M> + Len<Output: ArrayLength>,
         M: Metric,
         F: Field,
-    > core::ops::BitAnd<Mvect<B, M, F>> for Mvect<A, M, F>
+    > BitAnd<Mvect<B, M, F>> for Mvect<A, M, F>
 where
-    Self: Dual<Output: core::ops::BitXor<<Mvect<B, M, F> as Dual>::Output, Output: Undual>>,
+    Self: Dual<Output: BitXor<<Mvect<B, M, F> as Dual>::Output, Output: Undual>>,
     Mvect<B, M, F>: Dual,
 {
     type Output = <Xor<<Self as Dual>::Output, <Mvect<B, M, F> as Dual>::Output> as Undual>::Output;
@@ -85,8 +85,7 @@ impl<
         F: Field,
     > Sandwich<Mvect<B, M, F>> for Mvect<A, M, F>
 where
-    Mvect<A, M, F>: Inverse
-        + core::ops::Mul<Mvect<B, M, F>, Output: core::ops::Mul<<Mvect<A, M, F> as Inverse>::Output>>,
+    Mvect<A, M, F>: Inverse + Mul<Mvect<B, M, F>, Output: Mul<<Mvect<A, M, F> as Inverse>::Output>>,
 {
     type Output = Prod<Prod<Mvect<A, M, F>, Mvect<B, M, F>>, <Mvect<A, M, F> as Inverse>::Output>;
     #[inline(always)]
@@ -98,7 +97,7 @@ where
 // --------------------------------------------
 // Field * Basis
 // 0 * F = 0
-impl<F: Field, M: Metric> core::ops::Mul<F> for ZeroVect<M> {
+impl<F: Field, M: Metric> Mul<F> for ZeroVect<M> {
     type Output = Mvect<ta![], M, F>;
     #[inline(always)]
     fn mul(self, _: F) -> Self::Output {
@@ -106,7 +105,7 @@ impl<F: Field, M: Metric> core::ops::Mul<F> for ZeroVect<M> {
     }
 }
 // F * +B = 0
-impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B0> {
+impl<U: Unsigned, M: Metric, F: Field> Mul<F> for Basis<U, M, B0> {
     type Output = Mvect<ta![U], M, F>;
     #[inline(always)]
     fn mul(self, rhs: F) -> Self::Output {
@@ -116,7 +115,7 @@ impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B0> {
     }
 }
 // F * -B = 0
-impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B1> {
+impl<U: Unsigned, M: Metric, F: Field> Mul<F> for Basis<U, M, B1> {
     type Output = Mvect<ta![U], M, F>;
     #[inline(always)]
     fn mul(self, rhs: F) -> Self::Output {
@@ -126,9 +125,7 @@ impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B1> {
     }
 }
 // F * Mv
-impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> core::ops::Mul<F>
-    for Mvect<A, M, F>
-{
+impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> Mul<F> for Mvect<A, M, F> {
     type Output = Mvect<A, M, F>;
     #[inline(always)]
     fn mul(self, rhs: F) -> Self::Output {
@@ -200,7 +197,7 @@ impl<
         K: MulMarker<L, R>,
     > MvMulRunInner<K, F, OUT, L, ta![R | B]> for M
 where
-    Basis<L, M, B0>: core::ops::Mul<Basis<R, M, B0>, Output: CartCollector<F, OUT>>,
+    Basis<L, M, B0>: Mul<Basis<R, M, B0>, Output: CartCollector<F, OUT>>,
 {
     #[inline(always)]
     fn mv_mul_inner(out: &mut [F], left: &F, right: &[F]) {
@@ -258,7 +255,7 @@ where
             Output: TypeArray,
         >,
     >,
-    Basis<L, M, B0>: core::ops::Mul<Basis<R, M, B0>, Output: IntoBasisSet<Output: BasisSet<M>>>,
+    Basis<L, M, B0>: Mul<Basis<R, M, B0>, Output: IntoBasisSet<Output: BasisSet<M>>>,
     <M as MvMulTypeInner<K, L, B>>::Output: UnionMerge<
         If<
             MarkedProd<K, L, R>,

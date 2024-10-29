@@ -6,12 +6,13 @@ use crate::{
     ta,
     traits::FatDot,
 };
+use core::ops::Add;
 use generic_array::ArrayLength;
 use typenum::{Bit, Len, Sum, Unsigned, B0, B1};
 
 // -------------------------------------------------------------------------------------
 // ZeroVect + ZeroVect
-impl<M: Metric> core::ops::Add<ZeroVect<M>> for ZeroVect<M> {
+impl<M: Metric> Add<ZeroVect<M>> for ZeroVect<M> {
     type Output = ZeroVect<M>;
     #[inline(always)]
     fn add(self, _: ZeroVect<M>) -> Self::Output {
@@ -19,7 +20,7 @@ impl<M: Metric> core::ops::Add<ZeroVect<M>> for ZeroVect<M> {
     }
 }
 // ZeroVect + Mvect
-impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> core::ops::Add<Mvect<A, M, F>>
+impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> Add<Mvect<A, M, F>>
     for ZeroVect<M>
 {
     type Output = Mvect<A, M, F>;
@@ -29,7 +30,7 @@ impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> core::ops::
     }
 }
 // ZeroVect + Basis
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::Add<Basis<U, M, S>> for ZeroVect<M> {
+impl<U: Unsigned, M: Metric, S: Bit> Add<Basis<U, M, S>> for ZeroVect<M> {
     type Output = Basis<U, M, S>;
     #[inline(always)]
     fn add(self, rhs: Basis<U, M, S>) -> Self::Output {
@@ -37,7 +38,7 @@ impl<U: Unsigned, M: Metric, S: Bit> core::ops::Add<Basis<U, M, S>> for ZeroVect
     }
 }
 // Mvect + ZeroVect
-impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> core::ops::Add<ZeroVect<M>>
+impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> Add<ZeroVect<M>>
     for Mvect<A, M, F>
 {
     type Output = Mvect<A, M, F>;
@@ -48,9 +49,9 @@ impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> core::ops::
 }
 // Mvect + Basis
 impl<A: BasisSet<M> + Len<Output: ArrayLength>, U: Unsigned, M: Metric, F: Field + FatDot<M>>
-    core::ops::Add<Basis<U, M, B0>> for Mvect<A, M, F>
+    Add<Basis<U, M, B0>> for Mvect<A, M, F>
 where
-    Self: core::ops::Add<Mvect<ta![U], M, F>>,
+    Self: Add<Mvect<ta![U], M, F>>,
 {
     type Output = Sum<Mvect<A, M, F>, Mvect<ta![U], M, F>>;
     #[inline(always)]
@@ -59,9 +60,9 @@ where
     }
 }
 impl<A: BasisSet<M> + Len<Output: ArrayLength>, U: Unsigned, M: Metric, F: Field + FatDot<M>>
-    core::ops::Add<Basis<U, M, B1>> for Mvect<A, M, F>
+    Add<Basis<U, M, B1>> for Mvect<A, M, F>
 where
-    Self: core::ops::Add<Mvect<ta![U], M, F>>,
+    Self: Add<Mvect<ta![U], M, F>>,
 {
     type Output = Sum<Mvect<A, M, F>, Mvect<ta![U], M, F>>;
     #[inline(always)]
@@ -71,10 +72,10 @@ where
 }
 // Basis + Mvect
 impl<A: BasisSet<M> + Len<Output: ArrayLength>, U: Unsigned, M: Metric, F: Field + FatDot<M>>
-    core::ops::Add<Mvect<A, M, F>> for Basis<U, M, B0>
+    Add<Mvect<A, M, F>> for Basis<U, M, B0>
 where
     Self: Into<Mvect<ta![U], M, F>>,
-    Mvect<ta![U], M, F>: core::ops::Add<Mvect<A, M, F>>,
+    Mvect<ta![U], M, F>: Add<Mvect<A, M, F>>,
 {
     type Output = Sum<Mvect<ta![U], M, F>, Mvect<A, M, F>>;
     #[inline(always)]
@@ -83,10 +84,10 @@ where
     }
 }
 impl<A: BasisSet<M> + Len<Output: ArrayLength>, U: Unsigned, M: Metric, F: Field + FatDot<M>>
-    core::ops::Add<Mvect<A, M, F>> for Basis<U, M, B1>
+    Add<Mvect<A, M, F>> for Basis<U, M, B1>
 where
     Self: Into<Mvect<ta![U], M, F>>,
-    Mvect<ta![U], M, F>: core::ops::Add<Mvect<A, M, F>>,
+    Mvect<ta![U], M, F>: Add<Mvect<A, M, F>>,
 {
     type Output = Sum<Mvect<ta![U], M, F>, Mvect<A, M, F>>;
     #[inline(always)]
@@ -95,7 +96,7 @@ where
     }
 }
 // Basis + ZeroVect
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::Add<ZeroVect<M>> for Basis<U, M, S> {
+impl<U: Unsigned, M: Metric, S: Bit> Add<ZeroVect<M>> for Basis<U, M, S> {
     type Output = Basis<U, M, S>;
     #[inline(always)]
     fn add(self, _: ZeroVect<M>) -> Self::Output {
@@ -103,14 +104,14 @@ impl<U: Unsigned, M: Metric, S: Bit> core::ops::Add<ZeroVect<M>> for Basis<U, M,
     }
 }
 // Basis + Basis
-impl<U: Unsigned, M: Metric> core::ops::Add<Basis<U, M, B0>> for Basis<U, M, B1> {
+impl<U: Unsigned, M: Metric> Add<Basis<U, M, B0>> for Basis<U, M, B1> {
     type Output = ZeroVect<M>;
     #[inline(always)]
     fn add(self, _: Basis<U, M, B0>) -> Self::Output {
         Self::Output::default()
     }
 }
-impl<U: Unsigned, M: Metric> core::ops::Add<Basis<U, M, B1>> for Basis<U, M, B0> {
+impl<U: Unsigned, M: Metric> Add<Basis<U, M, B1>> for Basis<U, M, B0> {
     type Output = ZeroVect<M>;
     #[inline(always)]
     fn add(self, _: Basis<U, M, B1>) -> Self::Output {

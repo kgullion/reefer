@@ -6,6 +6,7 @@ use crate::{
     traits::{Dual, Undual},
     utils::count::CountOf,
 };
+use core::ops::BitXor;
 use typenum::{Bit, Unsigned, Xor};
 
 // // PsuedoScalar
@@ -28,8 +29,8 @@ use typenum::{Bit, Unsigned, Xor};
 // ------------------------
 impl<
         U: Unsigned
-            + core::ops::BitXor<M::Psuedoscalar, Output: Unsigned>
-            + DualPar<M, Parity: core::ops::BitXor<S, Output: Bit>>,
+            + BitXor<M::Psuedoscalar, Output: Unsigned>
+            + DualPar<M, Parity: BitXor<S, Output: Bit>>,
         M: Metric,
         S: Bit,
     > Dual for Basis<U, M, S>
@@ -50,8 +51,8 @@ impl<M: Metric> Dual for ZeroVect<M> {
 
 impl<
         U: Unsigned
-            + core::ops::BitXor<M::Psuedoscalar, Output: Unsigned>
-            + UndualPar<M, Parity: core::ops::BitXor<S, Output: Bit>>,
+            + BitXor<M::Psuedoscalar, Output: Unsigned>
+            + UndualPar<M, Parity: BitXor<S, Output: Bit>>,
         M: Metric,
         S: Bit,
     > Undual for Basis<U, M, S>

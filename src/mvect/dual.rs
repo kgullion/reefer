@@ -7,6 +7,7 @@ use crate::{
     traits::{Dual, Undual},
     utils::reverse::Reverse,
 };
+use core::ops::BitXor;
 use generic_array::ArrayLength;
 use typenum::{Bit, Len, TypeArray, Unsigned, Xor};
 
@@ -97,9 +98,7 @@ pub trait DualMap<M: Metric>: TypeArray {
 impl<M: Metric> DualMap<M> for ta![] {
     type Output = ta![];
 }
-impl<U: Unsigned + core::ops::BitXor<M::Psuedoscalar>, A: DualMap<M>, M: Metric> DualMap<M>
-    for ta![U | A]
-{
+impl<U: Unsigned + BitXor<M::Psuedoscalar>, A: DualMap<M>, M: Metric> DualMap<M> for ta![U | A] {
     type Output = ta![Xor<U, M::Psuedoscalar> | A::Output];
 }
 

@@ -7,20 +7,19 @@ use crate::{
     traits::{Conjugate, Inverse, Involute, Normalize, Reverse},
     utils::{Branch, If},
 };
+use core::ops::{BitAnd, BitXor, Neg};
 use typenum::{Bit, Unsigned, Xor, B1};
 
 // -------------------------------------------------------------------------------------
 // Negation
-impl<M: Metric> core::ops::Neg for ZeroVect<M> {
+impl<M: Metric> Neg for ZeroVect<M> {
     type Output = ZeroVect<M>;
     #[inline(always)]
     fn neg(self) -> Self::Output {
         self
     }
 }
-impl<U: Unsigned, M: Metric, S: Bit + core::ops::BitXor<B1, Output: Bit>> core::ops::Neg
-    for Basis<U, M, S>
-{
+impl<U: Unsigned, M: Metric, S: Bit + BitXor<B1, Output: Bit>> Neg for Basis<U, M, S> {
     type Output = Basis<U, M, Xor<S, B1>>;
     #[inline(always)]
     fn neg(self) -> Self::Output {
@@ -37,11 +36,8 @@ impl<M: Metric> Involute for ZeroVect<M> {
         self
     }
 }
-impl<
-        U: Unsigned + InvolutePar,
-        M: Metric,
-        S: Bit + core::ops::BitXor<InvoluteParity<U>, Output: Bit>,
-    > Involute for Basis<U, M, S>
+impl<U: Unsigned + InvolutePar, M: Metric, S: Bit + BitXor<InvoluteParity<U>, Output: Bit>> Involute
+    for Basis<U, M, S>
 {
     type Output = Basis<U, M, Xor<S, InvoluteParity<U>>>;
     #[inline(always)]
@@ -59,11 +55,8 @@ impl<M: Metric> Reverse for ZeroVect<M> {
         self
     }
 }
-impl<
-        U: Unsigned + ReversePar,
-        M: Metric,
-        S: Bit + core::ops::BitXor<ReverseParity<U>, Output: Bit>,
-    > Reverse for Basis<U, M, S>
+impl<U: Unsigned + ReversePar, M: Metric, S: Bit + BitXor<ReverseParity<U>, Output: Bit>> Reverse
+    for Basis<U, M, S>
 {
     type Output = Basis<U, M, Xor<S, ReverseParity<U>>>;
     #[inline(always)]
@@ -81,11 +74,8 @@ impl<M: Metric> Conjugate for ZeroVect<M> {
         self
     }
 }
-impl<
-        U: Unsigned + ConjugatePar,
-        M: Metric,
-        S: Bit + core::ops::BitXor<ConjugateParity<U>, Output: Bit>,
-    > Conjugate for Basis<U, M, S>
+impl<U: Unsigned + ConjugatePar, M: Metric, S: Bit + BitXor<ConjugateParity<U>, Output: Bit>>
+    Conjugate for Basis<U, M, S>
 {
     type Output = Basis<U, M, Xor<S, ConjugateParity<U>>>;
     #[inline(always)]
@@ -109,9 +99,9 @@ impl<
                 M,
                 Output: Branch<ZeroVect<M>, Basis<U, M, Xor<S, ReverseParity<U>>>, Output: Default>,
             > + ReversePar
-            + core::ops::BitAnd<M::ZeroMask>,
+            + BitAnd<M::ZeroMask>,
         M: Metric,
-        S: Bit + core::ops::BitXor<ReverseParity<U>, Output: Bit>,
+        S: Bit + BitXor<ReverseParity<U>, Output: Bit>,
     > Inverse for Basis<U, M, S>
 {
     type Output = If<IsDegen<M, U>, ZeroVect<M>, Basis<U, M, Xor<S, ReverseParity<U>>>>;

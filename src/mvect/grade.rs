@@ -5,6 +5,7 @@ use crate::{
     ta,
     utils::{count::CountOf, Branch, If},
 };
+use core::ops::Rem;
 use generic_array::ArrayLength;
 use typenum::{Bit, Eq, IsEqual, Len, TypeArray, Unsigned, B1};
 
@@ -15,7 +16,7 @@ impl<
             + GradedBs<G, F, Output: BasisSet<M> + Len<Output: ArrayLength>>,
         M: Metric,
         F: Field,
-    > core::ops::Rem<G> for Mvect<A, M, F>
+    > Rem<G> for Mvect<A, M, F>
 {
     type Output = Mvect<<A as GradedBs<G, F>>::Output, M, F>;
     #[inline(always)]

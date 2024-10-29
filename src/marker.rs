@@ -1,4 +1,5 @@
 use crate::parity::{SwapPar, SwapParity};
+use core::ops::{BitAnd, BitOr, BitXor};
 use typenum::{And, Bit, Eq, IsEqual, IsNotEqual, NotEq, Or, Unsigned, Xor, B1, U0};
 
 // Helper trait for multiplication marker structs (the K type parameter in MvMul etc)
@@ -14,7 +15,7 @@ impl<L: Unsigned, R: Unsigned> MulMarker<L, R> for GeoProdMarker {
 }
 
 pub struct OuterProdMarker;
-impl<L: Unsigned + core::ops::BitAnd<R, Output: IsEqual<U0>>, R: Unsigned> MulMarker<L, R>
+impl<L: Unsigned + BitAnd<R, Output: IsEqual<U0>>, R: Unsigned> MulMarker<L, R>
     for OuterProdMarker
 {
     // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉ₛ+ₜ -> L&R==0 // no overlap
@@ -23,7 +24,7 @@ impl<L: Unsigned + core::ops::BitAnd<R, Output: IsEqual<U0>>, R: Unsigned> MulMa
 
 pub struct CommutatorMarker;
 impl<
-        L: Unsigned + SwapPar<R, Parity: core::ops::BitXor<SwapParity<R, L>, Output: Bit>>,
+        L: Unsigned + SwapPar<R, Parity: BitXor<SwapParity<R, L>, Output: Bit>>,
         R: Unsigned + SwapPar<L>,
     > MulMarker<L, R> for CommutatorMarker
 {
@@ -32,7 +33,7 @@ impl<
 }
 
 pub struct InnerProdMarker;
-impl<L: Unsigned + core::ops::BitAnd<R, Output: IsNotEqual<U0>>, R: Unsigned> MulMarker<L, R>
+impl<L: Unsigned + BitAnd<R, Output: IsNotEqual<U0>>, R: Unsigned> MulMarker<L, R>
     for InnerProdMarker
 {
     // Opposite selection to outer product
@@ -40,7 +41,7 @@ impl<L: Unsigned + core::ops::BitAnd<R, Output: IsNotEqual<U0>>, R: Unsigned> Mu
 }
 
 pub struct LeftContractionMarker;
-impl<L: Unsigned + core::ops::BitAnd<R, Output: IsEqual<L>>, R: Unsigned> MulMarker<L, R>
+impl<L: Unsigned + BitAnd<R, Output: IsEqual<L>>, R: Unsigned> MulMarker<L, R>
     for LeftContractionMarker
 {
     // C<<D = Σ〈〈C〉ₛ〈D〉ₜ〉ₜ-ₛ // L⊆R = L&R==L
@@ -48,7 +49,7 @@ impl<L: Unsigned + core::ops::BitAnd<R, Output: IsEqual<L>>, R: Unsigned> MulMar
 }
 
 pub struct RightContractionMarker;
-impl<L: Unsigned + core::ops::BitAnd<R, Output: IsEqual<R>>, R: Unsigned> MulMarker<L, R>
+impl<L: Unsigned + BitAnd<R, Output: IsEqual<R>>, R: Unsigned> MulMarker<L, R>
     for RightContractionMarker
 {
     // C>>D = Σ〈〈C〉ₛ〈D〉ₜ〉ₛ-ₜ // R⊆L = L&R==R
@@ -64,10 +65,7 @@ impl<L: Unsigned + IsEqual<R>, R: Unsigned> MulMarker<L, R> for ScalarProdMarker
 pub struct FatDotMarker;
 impl<L: Unsigned, R: Unsigned> MulMarker<L, R> for FatDotMarker
 where
-    L: core::ops::BitAnd<
-        R,
-        Output: IsEqual<L, Output: core::ops::BitOr<Eq<And<L, R>, R>, Output: Bit>> + IsEqual<R>,
-    >,
+    L: BitAnd<R, Output: IsEqual<L, Output: BitOr<Eq<And<L, R>, R>, Output: Bit>> + IsEqual<R>>,
 {
     // C∧D = Σ〈〈C〉ₛ〈D〉ₜ〉|ₜ-ₛ| // L⊆R || R⊆L
     type Output = Or<Eq<And<L, R>, L>, Eq<And<L, R>, R>>;

@@ -8,14 +8,13 @@ use crate::{
     ta,
     traits::{Conjugate, Involute, Reverse},
 };
+use core::ops::Neg;
 use generic_array::ArrayLength;
 use typenum::{Bit, Len, TypeArray, Unsigned};
 
 // -------------------------------------------------------------------------------------
 // Negation
-impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field + core::ops::Neg> core::ops::Neg
-    for Mvect<A, M, F>
-{
+impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field + Neg> Neg for Mvect<A, M, F> {
     type Output = Mvect<A, M, F>;
     #[inline(always)]
     fn neg(self) -> Self::Output {
