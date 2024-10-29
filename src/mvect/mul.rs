@@ -4,7 +4,7 @@ use crate::{
     field::Field,
     marker::{
         CommutatorMarker, FatDotMarker, GeoProdMarker, InnerProdMarker, LeftContractionMarker,
-        MvMulMarker, OuterProdMarker, RightContractionMarker, ScalarProdMarker,
+        MarkedProd, MulMarker, OuterProdMarker, RightContractionMarker, ScalarProdMarker,
     },
     metric::Metric,
     mvect::{basis_set::BasisSet, Mvect},
@@ -16,14 +16,145 @@ use crate::{
     },
 };
 use core::marker::PhantomData;
+use core::ops::{BitOr, BitXor, Mul, Shl, Shr};
 use generic_array::{ArrayLength, GenericArray};
 use typenum::{Bit, Len, Prod, TypeArray, Unsigned, Xor, B0, B1};
 
 // --------------------------------------------
 // multivector multiplication
-// ----
 
-// MvMul - does the runtime work
+// macro to generate the marker prod impls
+macro_rules! build_marker_prod {
+    ($marker:ident, $trait:ident, $fn:ident) => {
+        impl<
+                A: BasisSet<M> + Len<Output: ArrayLength>,
+                B: BasisSet<M> + Len<Output: ArrayLength>,
+                M: Metric
+                    + MvMulType<$marker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
+                    + MvMulRun<$marker, F, <M as MvMulType<$marker, A, B>>::Output, A, B>,
+                F: Field,
+            > $trait<Mvect<B, M, F>> for Mvect<A, M, F>
+        {
+            type Output = Mvect<<M as MvMulType<$marker, A, B>>::Output, M, F>;
+            #[inline(always)]
+            fn $fn(self, rhs: Mvect<B, M, F>) -> Self::Output {
+                let mut out = Self::Output::default();
+                <M as MvMulRun<$marker, F, <M as MvMulType<$marker, A, B>>::Output, A, B>>::mv_mul(
+                    &mut out.0, &self.0, &rhs.0,
+                );
+                out
+            }
+        }
+    };
+}
+
+build_marker_prod!(GeoProdMarker, Mul, mul);
+build_marker_prod!(OuterProdMarker, BitXor, bitxor);
+build_marker_prod!(CommutatorMarker, Commutator, commutator);
+build_marker_prod!(InnerProdMarker, BitOr, bitor);
+build_marker_prod!(LeftContractionMarker, Shl, shl);
+build_marker_prod!(RightContractionMarker, Shr, shr);
+build_marker_prod!(ScalarProdMarker, ScalarProduct, scalar_prod);
+build_marker_prod!(FatDotMarker, FatDot, fat_dot);
+
+// ----
+// Regressive Product
+impl<
+        A: BasisSet<M> + Len<Output: ArrayLength>,
+        B: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric,
+        F: Field,
+    > core::ops::BitAnd<Mvect<B, M, F>> for Mvect<A, M, F>
+where
+    Self: Dual<Output: core::ops::BitXor<<Mvect<B, M, F> as Dual>::Output, Output: Undual>>,
+    Mvect<B, M, F>: Dual,
+{
+    type Output = <Xor<<Self as Dual>::Output, <Mvect<B, M, F> as Dual>::Output> as Undual>::Output;
+    #[inline(always)]
+    fn bitand(self, rhs: Mvect<B, M, F>) -> Self::Output {
+        (self.dual() ^ rhs.dual()).undual()
+    }
+}
+
+// --------------------------------------------
+// Sandwich Product -- Rem
+impl<
+        A: BasisSet<M> + Len<Output: ArrayLength>,
+        B: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric,
+        F: Field,
+    > Sandwich<Mvect<B, M, F>> for Mvect<A, M, F>
+where
+    Mvect<A, M, F>: Inverse
+        + core::ops::Mul<Mvect<B, M, F>, Output: core::ops::Mul<<Mvect<A, M, F> as Inverse>::Output>>,
+{
+    type Output = Prod<Prod<Mvect<A, M, F>, Mvect<B, M, F>>, <Mvect<A, M, F> as Inverse>::Output>;
+    #[inline(always)]
+    fn sandwich(self, rhs: Mvect<B, M, F>) -> Option<Self::Output> {
+        Some(self.clone() * rhs * self.inverse()?)
+    }
+}
+
+// --------------------------------------------
+// Field * Basis
+// 0 * F = 0
+impl<F: Field, M: Metric> core::ops::Mul<F> for ZeroVect<M> {
+    type Output = Mvect<ta![], M, F>;
+    #[inline(always)]
+    fn mul(self, _: F) -> Self::Output {
+        Self::Output::default()
+    }
+}
+// F * +B = 0
+impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B0> {
+    type Output = Mvect<ta![U], M, F>;
+    #[inline(always)]
+    fn mul(self, rhs: F) -> Self::Output {
+        let mut out = GenericArray::default();
+        out[0] = rhs;
+        Mvect(out, PhantomData)
+    }
+}
+// F * -B = 0
+impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B1> {
+    type Output = Mvect<ta![U], M, F>;
+    #[inline(always)]
+    fn mul(self, rhs: F) -> Self::Output {
+        let mut out = GenericArray::default();
+        out[0] = -rhs;
+        Mvect(out, PhantomData)
+    }
+}
+// F * Mv
+impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> core::ops::Mul<F>
+    for Mvect<A, M, F>
+{
+    type Output = Mvect<A, M, F>;
+    #[inline(always)]
+    fn mul(self, rhs: F) -> Self::Output {
+        let mut out = self;
+        for i in 0..out.0.len() {
+            out.0[i] *= rhs.clone();
+        }
+        out
+    }
+}
+
+// --------------------------------------------
+// The rest of this file is Type-level support for the above
+
+/// IntoBasisSet - convert a Basis or ZeroVect<M>or type into a BasisSet
+pub trait IntoBasisSet {
+    type Output: TypeArray;
+}
+impl<M: Metric> IntoBasisSet for ZeroVect<M> {
+    type Output = ta![];
+}
+impl<U: Unsigned, M: Metric, S: Bit> IntoBasisSet for Basis<U, M, S> {
+    type Output = ta![U];
+}
+
+/// MvMulRun - does the runtime work
 pub trait MvMulRun<K, F, OUT, A: BasisSet<Self>, B: BasisSet<Self>>: Metric + Sized {
     fn mv_mul(out: &mut [F], left: &[F], right: &[F]);
 }
@@ -49,7 +180,7 @@ where
         <M as MvMulRun<K, F, OUT, A, B>>::mv_mul(out, &left[1..], right);
     }
 }
-// MvMulInner
+// MvMulRunInner
 pub trait MvMulRunInner<K, F, OUT, L, B>: Metric {
     fn mv_mul_inner(out: &mut [F], left: &F, right: &[F]);
 }
@@ -66,14 +197,14 @@ impl<
         OUT: BasisSet<M> + Len<Output: ArrayLength>,
         M: Metric + MvMulRunInner<K, F, OUT, L, B>,
         F: Field,
-        K: MvMulMarker<L, R>,
+        K: MulMarker<L, R>,
     > MvMulRunInner<K, F, OUT, L, ta![R | B]> for M
 where
     Basis<L, M, B0>: core::ops::Mul<Basis<R, M, B0>, Output: CartCollector<F, OUT>>,
 {
     #[inline(always)]
     fn mv_mul_inner(out: &mut [F], left: &F, right: &[F]) {
-        if <K as MvMulMarker<L, R>>::Output::BOOL {
+        if MarkedProd::<K, L, R>::BOOL {
             <Prod<Basis<L, M, B0>, Basis<R, M, B0>> as CartCollector<F, OUT>>::collect(
                 out, left, &right[0],
             );
@@ -82,7 +213,7 @@ where
     }
 }
 // ----
-// ProdType - does the comptime work
+// MvMulType - does the comptime work
 pub trait MvMulType<K, A: BasisSet<Self>, B: BasisSet<Self>>: Metric + Sized {
     type Output: BasisSet<Self>;
 }
@@ -106,7 +237,7 @@ where
 {
     type Output = Union<<M as MvMulType<K, A, B>>::Output, <M as MvMulTypeInner<K, L, B>>::Output>;
 }
-/// ProdTypeInner - does the compile-time type work
+/// MvMulTypeInner - does the compile-time type work
 pub trait MvMulTypeInner<K, L: Unsigned, B: TypeArray> {
     type Output: TypeArray;
 }
@@ -118,16 +249,19 @@ impl<L: Unsigned, M: Metric, K> MvMulTypeInner<K, L, ta![]> for M {
 impl<L: Unsigned, R: Unsigned, B: BasisSet<M>, M: Metric + MvMulTypeInner<K, L, B>, K>
     MvMulTypeInner<K, L, ta![R | B]> for M
 where
-    K: MvMulMarker<L, R>,
-    Basis<L, M, B0>: core::ops::Mul<Basis<R, M, B0>, Output: IntoBasisSet<Output: BasisSet<M>>>,
-    <K as MvMulMarker<L, R>>::Output: Branch<
-        <Prod<Basis<L, M, B0>, Basis<R, M, B0>> as IntoBasisSet>::Output,
-        ta![],
-        Output: TypeArray,
+    K: MulMarker<
+        L,
+        R,
+        Output: Branch<
+            <Prod<Basis<L, M, B0>, Basis<R, M, B0>> as IntoBasisSet>::Output,
+            ta![],
+            Output: TypeArray,
+        >,
     >,
+    Basis<L, M, B0>: core::ops::Mul<Basis<R, M, B0>, Output: IntoBasisSet<Output: BasisSet<M>>>,
     <M as MvMulTypeInner<K, L, B>>::Output: UnionMerge<
         If<
-            <K as MvMulMarker<L, R>>::Output,
+            MarkedProd<K, L, R>,
             <Prod<Basis<L, M, B0>, Basis<R, M, B0>> as IntoBasisSet>::Output,
             ta![],
         >,
@@ -136,281 +270,11 @@ where
     type Output = Union<
         <M as MvMulTypeInner<K, L, B>>::Output,
         If<
-            <K as MvMulMarker<L, R>>::Output,
+            MarkedProd<K, L, R>,
             <Prod<Basis<L, M, B0>, Basis<R, M, B0>> as IntoBasisSet>::Output,
             ta![],
         >,
     >;
-}
-// --------------------------------------------
-/// IntoBasisSet - convert a Basis or ZeroVect<M>or type into a BasisSet
-pub trait IntoBasisSet {
-    type Output: TypeArray;
-}
-impl<M: Metric> IntoBasisSet for ZeroVect<M> {
-    type Output = ta![];
-}
-impl<U: Unsigned, M: Metric, S: Bit> IntoBasisSet for Basis<U, M, S> {
-    type Output = ta![U];
-}
-/// internal helper for implementing multiplication operators
-#[inline(always)]
-fn mv_mul_runner<
-    K,
-    A: BasisSet<M>,
-    B: BasisSet<M>,
-    M: Metric
-        + MvMulType<K, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
-        + MvMulRun<K, F, <M as MvMulType<K, A, B>>::Output, A, B>,
-    F: Field,
->(
-    out: &mut [F],
-    left: &[F],
-    right: &[F],
-) {
-    <M as MvMulRun<K, F, <M as MvMulType<K, A, B>>::Output, A, B>>::mv_mul(out, left, right)
-}
-// ----
-// Mul - geometric product of two multivectors
-impl<
-        A: BasisSet<M> + Len<Output: ArrayLength>,
-        B: BasisSet<M> + Len<Output: ArrayLength>,
-        M: Metric
-            + MvMulType<GeoProdMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
-            + MvMulRun<GeoProdMarker, F, <M as MvMulType<GeoProdMarker, A, B>>::Output, A, B>,
-        F: Field,
-    > core::ops::Mul<Mvect<B, M, F>> for Mvect<A, M, F>
-{
-    type Output = Mvect<<M as MvMulType<GeoProdMarker, A, B>>::Output, M, F>;
-    #[inline(always)]
-    fn mul(self, rhs: Mvect<B, M, F>) -> Self::Output {
-        let mut out = Self::Output::default();
-        mv_mul_runner::<GeoProdMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
-        out
-    }
-}
-// ----
-// Outer Product
-impl<
-        A: BasisSet<M> + Len<Output: ArrayLength>,
-        B: BasisSet<M> + Len<Output: ArrayLength>,
-        M: Metric
-            + MvMulType<OuterProdMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
-            + MvMulRun<OuterProdMarker, F, <M as MvMulType<OuterProdMarker, A, B>>::Output, A, B>,
-        F: Field,
-    > core::ops::BitXor<Mvect<B, M, F>> for Mvect<A, M, F>
-{
-    type Output = Mvect<<M as MvMulType<OuterProdMarker, A, B>>::Output, M, F>;
-    #[inline(always)]
-    fn bitxor(self, rhs: Mvect<B, M, F>) -> Self::Output {
-        let mut out = Self::Output::default();
-        mv_mul_runner::<OuterProdMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
-        out
-    }
-}
-// ----
-// Regressive Product
-impl<
-        A: BasisSet<M> + Len<Output: ArrayLength>,
-        B: BasisSet<M> + Len<Output: ArrayLength>,
-        M: Metric,
-        F: Field,
-    > core::ops::BitAnd<Mvect<B, M, F>> for Mvect<A, M, F>
-where
-    Self: Dual<Output: core::ops::BitXor<<Mvect<B, M, F> as Dual>::Output, Output: Undual>>,
-    Mvect<B, M, F>: Dual,
-{
-    type Output = <Xor<<Self as Dual>::Output, <Mvect<B, M, F> as Dual>::Output> as Undual>::Output;
-    #[inline(always)]
-    fn bitand(self, rhs: Mvect<B, M, F>) -> Self::Output {
-        (self.dual() ^ rhs.dual()).undual()
-    }
-}
-// ----
-// Commutator Product
-impl<
-        A: BasisSet<M> + Len<Output: ArrayLength>,
-        B: BasisSet<M> + Len<Output: ArrayLength>,
-        M: Metric
-            + MvMulType<CommutatorMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
-            + MvMulRun<CommutatorMarker, F, <M as MvMulType<CommutatorMarker, A, B>>::Output, A, B>,
-        F: Field,
-    > Commutator<Mvect<B, M, F>> for Mvect<A, M, F>
-{
-    type Output = Mvect<<M as MvMulType<CommutatorMarker, A, B>>::Output, M, F>;
-    #[inline(always)]
-    fn commutator(self, rhs: Mvect<B, M, F>) -> Self::Output {
-        let mut out = Self::Output::default();
-        mv_mul_runner::<CommutatorMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
-        out
-    }
-}
-// ----
-// Inner Product
-impl<
-        A: BasisSet<M> + Len<Output: ArrayLength>,
-        B: BasisSet<M> + Len<Output: ArrayLength>,
-        M: Metric
-            + MvMulType<InnerProdMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
-            + MvMulRun<InnerProdMarker, F, <M as MvMulType<InnerProdMarker, A, B>>::Output, A, B>,
-        F: Field,
-    > core::ops::BitOr<Mvect<B, M, F>> for Mvect<A, M, F>
-{
-    type Output = Mvect<<M as MvMulType<InnerProdMarker, A, B>>::Output, M, F>;
-    #[inline(always)]
-    fn bitor(self, rhs: Mvect<B, M, F>) -> Self::Output {
-        let mut out = Self::Output::default();
-        mv_mul_runner::<InnerProdMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
-        out
-    }
-}
-// ----
-// Left Contraction
-impl<
-        A: BasisSet<M> + Len<Output: ArrayLength>,
-        B: BasisSet<M> + Len<Output: ArrayLength>,
-        M: Metric
-            + MvMulType<LeftContractionMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
-            + MvMulRun<
-                LeftContractionMarker,
-                F,
-                <M as MvMulType<LeftContractionMarker, A, B>>::Output,
-                A,
-                B,
-            >,
-        F: Field,
-    > core::ops::Shl<Mvect<B, M, F>> for Mvect<A, M, F>
-{
-    type Output = Mvect<<M as MvMulType<LeftContractionMarker, A, B>>::Output, M, F>;
-    #[inline(always)]
-    fn shl(self, rhs: Mvect<B, M, F>) -> Self::Output {
-        let mut out = Self::Output::default();
-        mv_mul_runner::<LeftContractionMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
-        out
-    }
-}
-// ----
-// Right Contraction
-impl<
-        A: BasisSet<M> + Len<Output: ArrayLength>,
-        B: BasisSet<M> + Len<Output: ArrayLength>,
-        M: Metric
-            + MvMulType<RightContractionMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
-            + MvMulRun<
-                RightContractionMarker,
-                F,
-                <M as MvMulType<RightContractionMarker, A, B>>::Output,
-                A,
-                B,
-            >,
-        F: Field,
-    > core::ops::Shr<Mvect<B, M, F>> for Mvect<A, M, F>
-{
-    type Output = Mvect<<M as MvMulType<RightContractionMarker, A, B>>::Output, M, F>;
-    #[inline(always)]
-    fn shr(self, rhs: Mvect<B, M, F>) -> Self::Output {
-        let mut out = Self::Output::default();
-        mv_mul_runner::<RightContractionMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
-        out
-    }
-}
-
-// ----
-// Scalar Product
-impl<
-        A: BasisSet<M> + Len<Output: ArrayLength>,
-        B: BasisSet<M> + Len<Output: ArrayLength>,
-        M: Metric
-            + MvMulType<ScalarProdMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
-            + MvMulRun<ScalarProdMarker, F, <M as MvMulType<ScalarProdMarker, A, B>>::Output, A, B>,
-        F: Field,
-    > ScalarProduct<Mvect<B, M, F>> for Mvect<A, M, F>
-{
-    type Output = Mvect<<M as MvMulType<ScalarProdMarker, A, B>>::Output, M, F>;
-    #[inline(always)]
-    fn scalar_prod(self, rhs: Mvect<B, M, F>) -> Self::Output {
-        let mut out = Self::Output::default();
-        mv_mul_runner::<ScalarProdMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
-        out
-    }
-}
-// ----
-// FatDot Product
-impl<
-        A: BasisSet<M> + Len<Output: ArrayLength>,
-        B: BasisSet<M> + Len<Output: ArrayLength>,
-        M: Metric
-            + MvMulType<FatDotMarker, A, B, Output: BasisSet<M> + Len<Output: ArrayLength>>
-            + MvMulRun<FatDotMarker, F, <M as MvMulType<FatDotMarker, A, B>>::Output, A, B>,
-        F: Field,
-    > FatDot<Mvect<B, M, F>> for Mvect<A, M, F>
-{
-    type Output = Mvect<<M as MvMulType<FatDotMarker, A, B>>::Output, M, F>;
-    #[inline(always)]
-    fn fat_dot(self, rhs: Mvect<B, M, F>) -> Self::Output {
-        let mut out = Self::Output::default();
-        mv_mul_runner::<FatDotMarker, A, B, M, F>(&mut out.0, &self.0, &rhs.0);
-        out
-    }
-}
-// --------------------------------------------
-// Field * Basis
-impl<F: Field, M: Metric> core::ops::Mul<F> for ZeroVect<M> {
-    type Output = Mvect<ta![], M, F>;
-    #[inline(always)]
-    fn mul(self, _: F) -> Self::Output {
-        Self::Output::default()
-    }
-}
-impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B0> {
-    type Output = Mvect<ta![U], M, F>;
-    #[inline(always)]
-    fn mul(self, rhs: F) -> Self::Output {
-        let mut out = GenericArray::default();
-        out[0] = rhs;
-        Mvect(out, PhantomData)
-    }
-}
-impl<U: Unsigned, M: Metric, F: Field> core::ops::Mul<F> for Basis<U, M, B1> {
-    type Output = Mvect<ta![U], M, F>;
-    #[inline(always)]
-    fn mul(self, rhs: F) -> Self::Output {
-        let mut out = GenericArray::default();
-        out[0] = -rhs;
-        Mvect(out, PhantomData)
-    }
-}
-impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> core::ops::Mul<F>
-    for Mvect<A, M, F>
-{
-    type Output = Mvect<A, M, F>;
-    #[inline(always)]
-    fn mul(self, rhs: F) -> Self::Output {
-        let mut out = self;
-        for i in 0..out.0.len() {
-            out.0[i] *= rhs.clone();
-        }
-        out
-    }
-}
-
-// --------------------------------------------
-// Sandwich Product -- Rem
-impl<
-        A: BasisSet<M> + Len<Output: ArrayLength>,
-        B: BasisSet<M> + Len<Output: ArrayLength>,
-        M: Metric,
-        F: Field,
-    > Sandwich<Mvect<B, M, F>> for Mvect<A, M, F>
-where
-    Mvect<A, M, F>: Inverse
-        + core::ops::Mul<Mvect<B, M, F>, Output: core::ops::Mul<<Mvect<A, M, F> as Inverse>::Output>>,
-{
-    type Output = Prod<Prod<Mvect<A, M, F>, Mvect<B, M, F>>, <Mvect<A, M, F> as Inverse>::Output>;
-    #[inline(always)]
-    fn sandwich(self, rhs: Mvect<B, M, F>) -> Option<Self::Output> {
-        Some(self.clone() * rhs * self.inverse()?)
-    }
 }
 
 #[cfg(test)]

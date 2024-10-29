@@ -25,10 +25,10 @@ pub mod vga6d;
 //     + BitXor          // ☑ ☑ Outer Product
 //     + Mul             // ☑ ☑ Geometric Product
 //     + Mul<F>          // ☑ ☑ Field Product
-//     + Commutator      // ☐ ☑ Commutator
-//     + ScalarProduct   // ☐ ☑ Scalar Product
-//     + FatDot          // ☐ ☑ "Fat" Dot Product
-//     + BitAnd          // ☐ ☑ Regressive Product
+//     + Commutator      // ☑ ☑ Commutator
+//     + ScalarProduct   // ☑ ☑ Scalar Product
+//     + FatDot          // ☑ ☑ "Fat" Dot Product
+//     + BitAnd          // ☑ ☑ Regressive Product
 //     + BitOr           // ☑ ☑ Inner Product
 //     + Shl             // ☑ ☑ Left Contraction
 //     + Shr             // ☑ ☑ Right Contraction
@@ -40,13 +40,12 @@ pub mod vga6d;
 //     + Involute        // ☑ ☑ Involute
 //     + Reverse         // ☑ ☑ Reverse
 //     + Conjugate       // ☑ ☑ Conjugate
-//     + Sandwich        // ☐ ☐ Sandwich Product
+//     + Sandwich        // ☑ ☑ Sandwich Product
 //     + Inverse         // ☐ ☐ Inverse
 //     + Div             // ☐ ☐ Division
 //     + Normalize       // ☑ ☐ Normalize
 //     + Exponential     // ☐ ☐ Exponential
 //     + Logarithm       // ☐ ☐ Logarithm
-// {}
 
 /// just typenum::tarr but with elixir style [ a, b, c | rest ] syntax
 #[macro_export]
