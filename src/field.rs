@@ -3,11 +3,11 @@ use crate::{
     metric::Metric,
     mvect::{basis_set::BasisSet, Mvect},
 };
+use core::ops::Neg;
 use generic_array::ArrayLength;
 use num_traits::{NumAssignOps, Signed};
 use typenum::{Bit, Len, Prod, Unsigned};
-
-pub trait Field: Signed + NumAssignOps + PartialOrd + Default + Clone + Sized {}
+pub trait Field: Signed + Neg + NumAssignOps + PartialOrd + Default + Clone + Sized {}
 impl Field for f32 {} // TODO: implement for i32, f64, etc.
 
 // /// handy when a faster way to negate is available

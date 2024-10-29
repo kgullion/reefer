@@ -5,10 +5,10 @@ use crate::{
 use core::marker::PhantomData;
 use typenum::{Bit, Unsigned};
 
-impl Default for ZeroVect {
+impl<M: Metric> Default for ZeroVect<M> {
     #[inline(always)]
     fn default() -> Self {
-        Self
+        Self(PhantomData)
     }
 }
 impl<U: Unsigned, M: Metric, S: Bit> Default for Basis<U, M, S> {

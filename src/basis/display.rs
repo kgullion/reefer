@@ -5,7 +5,7 @@ use crate::{
 use core::fmt;
 use typenum::{Unsigned, B0, B1};
 
-impl fmt::Display for ZeroVect {
+impl<M: Metric> fmt::Display for ZeroVect<M> {
     #[inline(always)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "0")

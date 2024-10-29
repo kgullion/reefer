@@ -43,8 +43,8 @@ impl<
         Self::Output::default()
     }
 }
-impl Dual for ZeroVect {
-    type Output = ZeroVect;
+impl<M: Metric> Dual for ZeroVect<M> {
+    type Output = ZeroVect<M>;
     #[inline(always)]
     fn dual(self) -> Self::Output {
         Self::Output::default()
@@ -65,8 +65,8 @@ impl<
         Self::Output::default()
     }
 }
-impl Undual for ZeroVect {
-    type Output = ZeroVect;
+impl<M: Metric> Undual for ZeroVect<M> {
+    type Output = ZeroVect<M>;
     #[inline(always)]
     fn undual(self) -> Self::Output {
         Self::Output::default()

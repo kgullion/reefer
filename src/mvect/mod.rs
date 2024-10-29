@@ -4,7 +4,11 @@ pub mod default;
 pub mod display;
 pub mod dual;
 pub mod equality;
+pub mod grade;
+pub mod index;
+pub mod into;
 pub mod mul;
+pub mod neg;
 
 use crate::{field::Field, metric::Metric, mvect::basis_set::BasisSet};
 use core::marker::PhantomData;

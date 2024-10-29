@@ -5,7 +5,7 @@ use crate::{
     metric::Metric,
     mvect::{basis_set::BasisSet, Mvect},
     ta,
-    traits::{Commutator, Dual, FatDot, ScalarProduct, Undual},
+    traits::{Commutator, Dual, FatDot, Inverse, Sandwich, ScalarProduct, Undual},
     utils::{
         parity::{SwapPar, SwapParity},
         typeset::{Union, UnionMerge},
@@ -146,11 +146,11 @@ where
     >;
 }
 // --------------------------------------------
-/// IntoBasisSet - convert a Basis or ZeroVector type into a BasisSet
+/// IntoBasisSet - convert a Basis or ZeroVect<M>or type into a BasisSet
 pub trait IntoBasisSet {
     type Output: TypeArray;
 }
-impl IntoBasisSet for ZeroVect {
+impl<M: Metric> IntoBasisSet for ZeroVect<M> {
     type Output = ta![];
 }
 impl<U: Unsigned, M: Metric, S: Bit> IntoBasisSet for Basis<U, M, S> {
@@ -442,6 +442,24 @@ impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> core::ops::
             out.0[i] *= rhs.clone();
         }
         out
+    }
+}
+
+// --------------------------------------------
+// Sandwich Product -- Rem
+impl<
+        A: BasisSet<M> + Len<Output: ArrayLength>,
+        B: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric,
+        F: Field,
+    > Sandwich<Mvect<B, M, F>> for Mvect<A, M, F>
+where
+    Mvect<A, M, F>: Inverse + Mul<Mvect<B, M, F>, Output: Mul<<Mvect<A, M, F> as Inverse>::Output>>,
+{
+    type Output = Prod<Prod<Mvect<A, M, F>, Mvect<B, M, F>>, <Mvect<A, M, F> as Inverse>::Output>;
+    #[inline(always)]
+    fn sandwich(self, rhs: Mvect<B, M, F>) -> Option<Self::Output> {
+        Some(self.clone() * rhs * self.inverse()?)
     }
 }
 

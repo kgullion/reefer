@@ -1,89 +1,67 @@
 use crate::{
     basis::{into::IntoBasis, Basis, ZeroVect},
+    field::Field,
     metric::{Metric, TritMul, TritXor},
-    // traits::Inverse,
+    mvect::Mvect,
+    ta,
     utils::{
         parity::{SwapPar, SwapParity},
         Branch, If,
     },
 };
 use core::ops::{BitAnd, BitXor, Mul};
-// use num_traits::Zero;
 use typenum::{And, Bit, Eq, IsEqual, Prod, Unsigned, Xor, U0};
 
 // -------------------------------------------------------------------------------------
 // Division
 // 0/0 = None
-impl core::ops::Div<ZeroVect> for ZeroVect {
-    type Output = Option<ZeroVect>;
+impl<M: Metric> core::ops::Div<ZeroVect<M>> for ZeroVect<M> {
+    type Output = Option<ZeroVect<M>>;
     #[inline(always)]
-    fn div(self, _: ZeroVect) -> Self::Output {
+    fn div(self, _: ZeroVect<M>) -> Self::Output {
         None
     }
 }
 // B/0 = None
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::Div<ZeroVect> for Basis<U, M, S> {
-    type Output = Option<ZeroVect>;
+impl<U: Unsigned, M: Metric, S: Bit> core::ops::Div<ZeroVect<M>> for Basis<U, M, S> {
+    type Output = Option<ZeroVect<M>>;
     #[inline(always)]
-    fn div(self, _: ZeroVect) -> Self::Output {
+    fn div(self, _: ZeroVect<M>) -> Self::Output {
         None
     }
 }
 // 0/B = 0
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::Div<Basis<U, M, S>> for ZeroVect {
-    type Output = Option<ZeroVect>;
+impl<U: Unsigned, M: Metric, S: Bit> core::ops::Div<Basis<U, M, S>> for ZeroVect<M> {
+    type Output = Option<ZeroVect<M>>;
     #[inline(always)]
     fn div(self, _: Basis<U, M, S>) -> Self::Output {
         Some(self)
     }
 }
-// // L/R = L * R.inv
-// pub trait MulOpt<Rhs> {
-//     type Output;
-//     fn mul_opt(self, rhs: Self::Output) -> Option<Self::Output>;
-// }
-// impl MulOpt<Option<ZeroVect>> for ZeroVect {
-//     type Output = ZeroVect;
-//     fn mul_opt(self, _: Option<ZeroVect>) -> Option<Self::Output> {
-//         None
-//     }
-// }
-// impl<LU: Unsigned, RU: Unsigned, M: Metric, LS: Bit, RS: Bit> core::ops::Div<Basis<RU, M, RS>>
-//     for Basis<LU, M, LS>
-// where
-//     Self: MulOpt<<Basis<RU, M, RS> as Inverse>::Output>,
-//     Basis<RU, M, RS>: Inverse,
-// {
-//     type Output = Option<<Self as MulOpt<<Basis<RU, M, RS> as Inverse>::Output>>::Output>;
-//     #[inline(always)]
-//     fn div(self, rhs: Basis<RU, M, RS>) -> Self::Output {
-//         <Self as MulOpt<<Basis<RU, M, RS> as Inverse>::Output>>::mul_opt(self, rhs.inverse())
-//     }
-// }
 
 // -------------------------------------------------------------------------------------
 // Geometric Product
 // 0 * 0 = 0
-impl core::ops::Mul<ZeroVect> for ZeroVect {
-    type Output = ZeroVect;
+impl<M: Metric> core::ops::Mul<ZeroVect<M>> for ZeroVect<M> {
+    type Output = ZeroVect<M>;
     #[inline(always)]
-    fn mul(self, _: ZeroVect) -> Self::Output {
+    fn mul(self, _: ZeroVect<M>) -> Self::Output {
         Self::Output::default()
     }
 }
 // 0 * B = 0
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::Mul<Basis<U, M, S>> for ZeroVect {
-    type Output = ZeroVect;
+impl<U: Unsigned, M: Metric, S: Bit> core::ops::Mul<Basis<U, M, S>> for ZeroVect<M> {
+    type Output = ZeroVect<M>;
     #[inline(always)]
     fn mul(self, _: Basis<U, M, S>) -> Self::Output {
         Self::Output::default()
     }
 }
 // 0 * B = 0
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::Mul<ZeroVect> for Basis<U, M, S> {
-    type Output = ZeroVect;
+impl<U: Unsigned, M: Metric, S: Bit> core::ops::Mul<ZeroVect<M>> for Basis<U, M, S> {
+    type Output = ZeroVect<M>;
     #[inline(always)]
-    fn mul(self, _: ZeroVect) -> Self::Output {
+    fn mul(self, _: ZeroVect<M>) -> Self::Output {
         Self::Output::default()
     }
 }
@@ -121,15 +99,15 @@ impl<
 // -------------------------------------------------------------------------------------
 // Outer Product
 // 0 ^ 0 = 0
-impl core::ops::BitXor<ZeroVect> for ZeroVect {
-    type Output = ZeroVect;
+impl<M: Metric> core::ops::BitXor<ZeroVect<M>> for ZeroVect<M> {
+    type Output = ZeroVect<M>;
     #[inline(always)]
-    fn bitxor(self, _: ZeroVect) -> Self::Output {
+    fn bitxor(self, _: ZeroVect<M>) -> Self::Output {
         Self::Output::default()
     }
 }
 // 0 ^ B = B
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::BitXor<Basis<U, M, S>> for ZeroVect {
+impl<U: Unsigned, M: Metric, S: Bit> core::ops::BitXor<Basis<U, M, S>> for ZeroVect<M> {
     type Output = Basis<U, M, S>;
     #[inline(always)]
     fn bitxor(self, rhs: Basis<U, M, S>) -> Self::Output {
@@ -137,10 +115,10 @@ impl<U: Unsigned, M: Metric, S: Bit> core::ops::BitXor<Basis<U, M, S>> for ZeroV
     }
 }
 // B ^ 0 = B
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::BitXor<ZeroVect> for Basis<U, M, S> {
+impl<U: Unsigned, M: Metric, S: Bit> core::ops::BitXor<ZeroVect<M>> for Basis<U, M, S> {
     type Output = Basis<U, M, S>;
     #[inline(always)]
-    fn bitxor(self, _: ZeroVect) -> Self::Output {
+    fn bitxor(self, _: ZeroVect<M>) -> Self::Output {
         self
     }
 }
@@ -153,12 +131,12 @@ where
         RU,
         Output: IsEqual<
             U0,
-            Output: Branch<Prod<Basis<LU, M, LS>, Basis<RU, M, RS>>, ZeroVect, Output: Default>,
+            Output: Branch<Prod<Basis<LU, M, LS>, Basis<RU, M, RS>>, ZeroVect<M>, Output: Default>,
         >,
     >,
 {
     //   Output =       LU & RU == 0    ?            LB        *       RB         : Zero
-    type Output = If<Eq<And<LU, RU>, U0>, Prod<Basis<LU, M, LS>, Basis<RU, M, RS>>, ZeroVect>;
+    type Output = If<Eq<And<LU, RU>, U0>, Prod<Basis<LU, M, LS>, Basis<RU, M, RS>>, ZeroVect<M>>;
     #[inline(always)]
     fn bitxor(self, _: Basis<RU, M, RS>) -> Self::Output {
         Self::Output::default()
@@ -168,26 +146,26 @@ where
 // -------------------------------------------------------------------------------------
 // Inner Product
 // 0 | 0 = 0
-impl core::ops::BitOr<ZeroVect> for ZeroVect {
-    type Output = ZeroVect;
+impl<M: Metric> core::ops::BitOr<ZeroVect<M>> for ZeroVect<M> {
+    type Output = ZeroVect<M>;
     #[inline(always)]
-    fn bitor(self, _: ZeroVect) -> Self::Output {
+    fn bitor(self, _: ZeroVect<M>) -> Self::Output {
         Self::Output::default()
     }
 }
 // 0 | B = 0
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::BitOr<Basis<U, M, S>> for ZeroVect {
-    type Output = ZeroVect;
+impl<U: Unsigned, M: Metric, S: Bit> core::ops::BitOr<Basis<U, M, S>> for ZeroVect<M> {
+    type Output = ZeroVect<M>;
     #[inline(always)]
     fn bitor(self, _: Basis<U, M, S>) -> Self::Output {
         Self::Output::default()
     }
 }
 // B | 0 = 0
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::BitOr<ZeroVect> for Basis<U, M, S> {
-    type Output = ZeroVect;
+impl<U: Unsigned, M: Metric, S: Bit> core::ops::BitOr<ZeroVect<M>> for Basis<U, M, S> {
+    type Output = ZeroVect<M>;
     #[inline(always)]
-    fn bitor(self, _: ZeroVect) -> Self::Output {
+    fn bitor(self, _: ZeroVect<M>) -> Self::Output {
         Self::Output::default()
     }
 }
@@ -200,12 +178,12 @@ where
         RU,
         Output: IsEqual<
             U0,
-            Output: Branch<ZeroVect, Prod<Basis<LU, M, LS>, Basis<RU, M, RS>>, Output: Default>,
+            Output: Branch<ZeroVect<M>, Prod<Basis<LU, M, LS>, Basis<RU, M, RS>>, Output: Default>,
         >,
     >,
 {
     //   Output =       LU & RU == 0    ? Zero                   LB        *       RB
-    type Output = If<Eq<And<LU, RU>, U0>, ZeroVect, Prod<Basis<LU, M, LS>, Basis<RU, M, RS>>>;
+    type Output = If<Eq<And<LU, RU>, U0>, ZeroVect<M>, Prod<Basis<LU, M, LS>, Basis<RU, M, RS>>>;
     #[inline(always)]
     fn bitor(self, _: Basis<RU, M, RS>) -> Self::Output {
         Self::Output::default()
@@ -215,26 +193,26 @@ where
 // -------------------------------------------------------------------------------------
 // Left Contraction
 // 0 << 0 = 0
-impl core::ops::Shl<ZeroVect> for ZeroVect {
-    type Output = ZeroVect;
+impl<M: Metric> core::ops::Shl<ZeroVect<M>> for ZeroVect<M> {
+    type Output = ZeroVect<M>;
     #[inline(always)]
-    fn shl(self, _: ZeroVect) -> Self::Output {
+    fn shl(self, _: ZeroVect<M>) -> Self::Output {
         Self::Output::default()
     }
 }
 // 0 << B = 0
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::Shl<Basis<U, M, S>> for ZeroVect {
-    type Output = ZeroVect;
+impl<U: Unsigned, M: Metric, S: Bit> core::ops::Shl<Basis<U, M, S>> for ZeroVect<M> {
+    type Output = ZeroVect<M>;
     #[inline(always)]
     fn shl(self, _: Basis<U, M, S>) -> Self::Output {
         Self::Output::default()
     }
 }
 // B << 0 = B
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::Shl<ZeroVect> for Basis<U, M, S> {
+impl<U: Unsigned, M: Metric, S: Bit> core::ops::Shl<ZeroVect<M>> for Basis<U, M, S> {
     type Output = Basis<U, M, S>;
     #[inline(always)]
-    fn shl(self, _: ZeroVect) -> Self::Output {
+    fn shl(self, _: ZeroVect<M>) -> Self::Output {
         self
     }
 }
@@ -247,12 +225,12 @@ where
         RU,
         Output: IsEqual<
             LU,
-            Output: Branch<Prod<Basis<LU, M, LS>, Basis<RU, M, RS>>, ZeroVect, Output: Default>,
+            Output: Branch<Prod<Basis<LU, M, LS>, Basis<RU, M, RS>>, ZeroVect<M>, Output: Default>,
         >,
     >,
 {
     //   Output =       LU & RU == LU    ?            LB        *       RB         : Zero
-    type Output = If<Eq<And<LU, RU>, LU>, Prod<Basis<LU, M, LS>, Basis<RU, M, RS>>, ZeroVect>;
+    type Output = If<Eq<And<LU, RU>, LU>, Prod<Basis<LU, M, LS>, Basis<RU, M, RS>>, ZeroVect<M>>;
     #[inline(always)]
     fn shl(self, _: Basis<RU, M, RS>) -> Self::Output {
         Self::Output::default()
@@ -262,26 +240,26 @@ where
 // -------------------------------------------------------------------------------------
 // Right Contraction is the same as Left Contraction, but with the roles of L and R reversed.
 // 0 >> 0 = 0
-impl core::ops::Shr<ZeroVect> for ZeroVect {
-    type Output = ZeroVect;
+impl<M: Metric> core::ops::Shr<ZeroVect<M>> for ZeroVect<M> {
+    type Output = ZeroVect<M>;
     #[inline(always)]
-    fn shr(self, _: ZeroVect) -> Self::Output {
+    fn shr(self, _: ZeroVect<M>) -> Self::Output {
         Self::Output::default()
     }
 }
 // 0 >> B = 0
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::Shr<Basis<U, M, S>> for ZeroVect {
-    type Output = ZeroVect;
+impl<U: Unsigned, M: Metric, S: Bit> core::ops::Shr<Basis<U, M, S>> for ZeroVect<M> {
+    type Output = ZeroVect<M>;
     #[inline(always)]
     fn shr(self, _: Basis<U, M, S>) -> Self::Output {
         Self::Output::default()
     }
 }
 // B >> 0 = B
-impl<U: Unsigned, M: Metric, S: Bit> core::ops::Shr<ZeroVect> for Basis<U, M, S> {
+impl<U: Unsigned, M: Metric, S: Bit> core::ops::Shr<ZeroVect<M>> for Basis<U, M, S> {
     type Output = Basis<U, M, S>;
     #[inline(always)]
-    fn shr(self, _: ZeroVect) -> Self::Output {
+    fn shr(self, _: ZeroVect<M>) -> Self::Output {
         self
     }
 }
@@ -294,5 +272,15 @@ where
     #[inline(always)]
     fn shr(self, rhs: Basis<LU, M, LS>) -> Self::Output {
         rhs << self
+    }
+}
+
+// -------------------------------------------------------------------------------------
+// Field Products
+impl<F: Field, M: Metric> core::ops::Mul<F> for ZeroVect<M> {
+    type Output = Mvect<ta![], M, F>;
+    #[inline(always)]
+    fn mul(self, _: F) -> Self::Output {
+        Self::Output::default()
     }
 }

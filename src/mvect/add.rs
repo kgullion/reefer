@@ -1,12 +1,18 @@
 use generic_array::ArrayLength;
-use typenum::Len;
+use num_traits::{one, One, Zero};
+use typenum::{Bit, Len, Sum, Unsigned, B0, B1, U0};
 
 use crate::{
+    basis::{Basis, ZeroVect},
     collector::{CollectInto, Collector},
     field::Field,
     metric::Metric,
     mvect::{basis_set::BasisSet, Mvect},
-    utils::typeset::{Union, UnionMerge},
+    ta,
+    utils::{
+        contains::{IdxOf, IndexOf},
+        typeset::{Union, UnionMerge},
+    },
 };
 use core::ops::{Add, Sub};
 
@@ -120,3 +126,78 @@ impl<
         &self - &rhs
     }
 }
+// -------------------------------------------------------------------------------------
+// ZeroVect + Field
+impl<M: Metric, F: Field> core::ops::Add<F> for ZeroVect<M> {
+    type Output = Mvect<ta![U0], M, F>;
+    #[inline(always)]
+    fn add(self, rhs: F) -> Self::Output {
+        let mut out = Mvect::<ta![U0], M, F>::default();
+        out.0[0] = rhs;
+        out
+    }
+}
+impl<M: Metric, F: Field> core::ops::Sub<F> for ZeroVect<M> {
+    type Output = Mvect<ta![U0], M, F>;
+    #[inline(always)]
+    fn sub(self, rhs: F) -> Self::Output {
+        let mut out = Mvect::<ta![U0], M, F>::default();
+        out.0[0] -= rhs;
+        out
+    }
+}
+// Basis + Field
+impl<U: Unsigned, M: Metric, F: Field> core::ops::Add<F> for Basis<U, M, B0>
+where
+    ta![U0]: UnionMerge<ta![U], Output: BasisSet<M> + Len<Output: ArrayLength> + IndexOf<U>>,
+{
+    type Output = Mvect<Union<ta![U0], ta![U]>, M, F>;
+    #[inline(always)]
+    fn add(self, rhs: F) -> Self::Output {
+        let mut out = Self::Output::default();
+        out.0[IdxOf::<Union<ta![U0], ta![U]>, U>::USIZE] += F::one();
+        out.0[0] += rhs;
+        out
+    }
+}
+impl<U: Unsigned, M: Metric, F: Field> core::ops::Add<F> for Basis<U, M, B1>
+where
+    ta![U0]: UnionMerge<ta![U], Output: BasisSet<M> + Len<Output: ArrayLength> + IndexOf<U>>,
+{
+    type Output = Mvect<Union<ta![U0], ta![U]>, M, F>;
+    #[inline(always)]
+    fn add(self, rhs: F) -> Self::Output {
+        let mut out = Self::Output::default();
+        out.0[IdxOf::<Union<ta![U0], ta![U]>, U>::USIZE] -= F::one();
+        out.0[0] += rhs;
+        out
+    }
+}
+impl<U: Unsigned, M: Metric, F: Field> core::ops::Sub<F> for Basis<U, M, B0>
+where
+    ta![U0]: UnionMerge<ta![U], Output: BasisSet<M> + Len<Output: ArrayLength> + IndexOf<U>>,
+{
+    type Output = Mvect<Union<ta![U0], ta![U]>, M, F>;
+    #[inline(always)]
+    fn sub(self, rhs: F) -> Self::Output {
+        let mut out = Self::Output::default();
+        out.0[IdxOf::<Union<ta![U0], ta![U]>, U>::USIZE] += F::one();
+        out.0[0] -= rhs;
+        out
+    }
+}
+impl<U: Unsigned, M: Metric, F: Field> core::ops::Sub<F> for Basis<U, M, B1>
+where
+    ta![U0]: UnionMerge<ta![U], Output: BasisSet<M> + Len<Output: ArrayLength> + IndexOf<U>>,
+{
+    type Output = Mvect<Union<ta![U0], ta![U]>, M, F>;
+    #[inline(always)]
+    fn sub(self, rhs: F) -> Self::Output {
+        let mut out = Self::Output::default();
+        out.0[IdxOf::<Union<ta![U0], ta![U]>, U>::USIZE] -= F::one();
+        out.0[0] -= rhs;
+        out
+    }
+}
+// Field + ZeroVect TODO: needs a macro and called for all primitive types
+// Field + Basis TODO: needs a macro and called for all primitive types

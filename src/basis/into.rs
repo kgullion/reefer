@@ -24,9 +24,9 @@ where
 }
 impl<U: Unsigned + Len, M: Metric> IntoBasis<U, M> for Z0
 where
-    Self: Into<ZeroVect>,
+    Self: Into<ZeroVect<M>>,
 {
-    type Output = ZeroVect;
+    type Output = ZeroVect<M>;
 }
 impl<U: Unsigned + Len, M: Metric> IntoBasis<U, M> for P1
 where
@@ -49,7 +49,7 @@ impl<U: Unsigned, M: Metric, S: Bit> From<S> for Basis<U, M, S> {
         Self::default()
     }
 }
-impl From<Z0> for ZeroVect {
+impl<M: Metric> From<Z0> for ZeroVect<M> {
     // Zero is Zero
     #[inline(always)]
     fn from(_: Z0) -> Self {
@@ -85,6 +85,6 @@ mod tests {
         assert_type_eq!(Basis<U2, M, B1>, <B1 as IntoBasis<U2, M>>::Output);
         assert_type_eq!(Basis<U2, M, B0>, <P1 as IntoBasis<U2, M>>::Output);
         assert_type_eq!(Basis<U2, M, B1>, <N1 as IntoBasis<U2, M>>::Output);
-        assert_type_eq!(ZeroVect, <Z0 as IntoBasis<U2, M>>::Output);
+        assert_type_eq!(ZeroVect<M>, <Z0 as IntoBasis<U2, M>>::Output);
     }
 }

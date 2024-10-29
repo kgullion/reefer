@@ -1,9 +1,10 @@
-use crate::GeometricObject;
-use typenum::{TypeArray, Unsigned};
-
 pub trait Commutator<Rhs> {
     type Output;
     fn commutator(self, rhs: Rhs) -> Self::Output;
+}
+pub trait Sandwich<Rhs> {
+    type Output;
+    fn sandwich(self, rhs: Rhs) -> Option<Self::Output>;
 }
 pub trait ScalarProduct<Rhs> {
     type Output;
@@ -21,10 +22,8 @@ pub trait Undual {
     type Output;
     fn undual(self) -> Self::Output;
 }
-pub trait Graded<G: Unsigned> {
-    type BasisSet: TypeArray;
+pub trait Grade {
     fn grade(self) -> usize;
-    fn graded(self) -> impl GeometricObject;
 }
 pub trait Involute {
     type Output;
