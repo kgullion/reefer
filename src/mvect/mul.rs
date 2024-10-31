@@ -16,7 +16,7 @@ use crate::{
     },
 };
 use core::marker::PhantomData;
-use core::ops::{BitAnd, BitOr, BitXor, Mul, Shl, Shr};
+use core::ops::{BitAnd, BitOr, BitXor, Div, Mul, Shl, Shr};
 use generic_array::{ArrayLength, GenericArray};
 use typenum::{Bit, Len, Prod, TypeArray, Unsigned, Xor, B0, B1};
 
@@ -134,6 +134,77 @@ impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> Mul<F> for 
             out.0[i] *= rhs.clone();
         }
         out
+    }
+}
+
+// --------------------------------------------
+// Div
+// Mv / Mv
+impl<
+        A: BasisSet<M> + Len<Output: ArrayLength>,
+        B: BasisSet<M> + Len<Output: ArrayLength>,
+        M: Metric,
+        F: Field,
+    > Div<Mvect<B, M, F>> for Mvect<A, M, F>
+where
+    Mvect<A, M, F>: Mul<<Mvect<B, M, F> as Inverse>::Output>,
+    Mvect<B, M, F>: Inverse,
+{
+    type Output = Option<Prod<Mvect<A, M, F>, <Mvect<B, M, F> as Inverse>::Output>>;
+    #[inline(always)]
+    fn div(self, rhs: Mvect<B, M, F>) -> Self::Output {
+        Some(self * rhs.inverse()?)
+    }
+}
+// Mv / Basis
+impl<A: BasisSet<M> + Len<Output: ArrayLength>, U: Unsigned, M: Metric, S: Bit, F: Field>
+    Div<Basis<U, M, S>> for Mvect<A, M, F>
+where
+    Mvect<A, M, F>: Div<Mvect<ta![U], M, F>>,
+    Mvect<ta![U], M, F>: From<Basis<U, M, S>>,
+{
+    type Output = <Mvect<A, M, F> as Div<Mvect<ta![U], M, F>>>::Output;
+    #[inline(always)]
+    fn div(self, rhs: Basis<U, M, S>) -> Self::Output {
+        self / rhs.into()
+    }
+}
+// Basis / Mv
+impl<U: Unsigned, B: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, S: Bit, F: Field>
+    Div<Mvect<B, M, F>> for Basis<U, M, S>
+where
+    Mvect<ta![U], M, F>: From<Basis<U, M, S>> + Div<Mvect<B, M, F>>,
+{
+    type Output = <Mvect<ta![U], M, F> as Div<Mvect<B, M, F>>>::Output;
+    #[inline(always)]
+    fn div(self, rhs: Mvect<B, M, F>) -> Self::Output {
+        Mvect::<ta![U], M, F>::from(self.into()) / rhs
+    }
+}
+// Mv / Field
+impl<A: BasisSet<M> + Len<Output: ArrayLength>, M: Metric, F: Field> Div<F> for Mvect<A, M, F>
+where
+    Mvect<A, M, F>: Mul<F>,
+{
+    type Output = Mvect<A, M, F>;
+    #[inline(always)]
+    fn div(self, rhs: F) -> Self::Output {
+        let mut out = self;
+        for i in 0..out.0.len() {
+            out.0[i] /= rhs.clone();
+        }
+        out
+    }
+}
+// Basis / Field
+impl<U: Unsigned, M: Metric, S: Bit, F: Field> Div<F> for Basis<U, M, S>
+where
+    Mvect<ta![U], M, F>: From<Basis<U, M, S>> + Div<F>,
+{
+    type Output = <Mvect<ta![U], M, F> as Div<F>>::Output;
+    #[inline(always)]
+    fn div(self, rhs: F) -> Self::Output {
+        Mvect::<ta![U], M, F>::from(self) / rhs
     }
 }
 

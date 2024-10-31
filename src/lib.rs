@@ -1,14 +1,14 @@
 // #![recursion_limit = "1024"]  // haven't needed it...yet
 pub mod basis;
-mod collector;
+pub mod collector;
 pub mod field;
-mod marker;
+pub mod marker;
 pub mod metric;
 pub mod mvect;
 pub mod parity;
 pub mod pga2d;
 pub mod traits;
-mod utils;
+pub mod utils;
 pub mod vga3d;
 pub mod vga6d;
 
@@ -34,7 +34,7 @@ pub mod vga6d;
 //     + Shr             // ☑ ☑ Right Contraction
 //     + Dual + Not      // ☑ ☑ Dual
 //     + Undual          // ☑ ☑ Undual
-//     + Rem             // ☑ ☑ Graded
+//     + Rem             // ☐ ☐
 //     + Grade           // ☑ ☒ Grade
 //     + Neg             // ☑ ☑ Negate
 //     + Involute        // ☑ ☑ Involute
@@ -42,7 +42,7 @@ pub mod vga6d;
 //     + Conjugate       // ☑ ☑ Conjugate
 //     + Sandwich        // ☑ ☑ Sandwich Product
 //     + Inverse         // ☐ ☐ Inverse
-//     + Div             // ☐ ☐ Division
+//     + Div             // ☑ ☑ Division
 //     + Normalize       // ☑ ☐ Normalize
 //     + Exponential     // ☐ ☐ Exponential
 //     + Logarithm       // ☐ ☐ Logarithm

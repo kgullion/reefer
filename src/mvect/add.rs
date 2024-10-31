@@ -197,5 +197,3 @@ where
         out
     }
 }
-// Field + ZeroVect TODO: needs a macro and called for all primitive types
-// Field + Basis TODO: needs a macro and called for all primitive types
