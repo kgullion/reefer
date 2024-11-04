@@ -1,7 +1,9 @@
 **Note**: Reefer is currently in **early** development and is **not** yet feature-complete.
 
 ![banner](img/banner.png)
+<div align="center">
 A rusty shipmate for sailing the seas of Geometric Algebra.
+</div>
 
 ## Table of Contents
 
