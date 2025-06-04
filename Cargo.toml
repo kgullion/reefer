@@ -1,12 +1,18 @@
 [package]
 name = "reefer"
-version = "0.1.0"
-edition = "2021"
+version = "0.2.0"
+edition = "2024"
 
-[features]
-assert-invariants = []
+[lib]
+proc-macro = true
 
 [dependencies]
-generic-array = "1.1.0"
-num-traits = "0.2.19"
-typenum = "1.17.0"
+quote = "*"
+syn = { version = "*", features = ["full", "extra-traits", "visit", "visit-mut"]}
+proc-macro2 = { version= "*", features = ["span-locations"]}
+prettyplease = "*"
+itertools = "*"
+cas-compute = "*"
+cas-parser = "*"
+rug = "*"
+libm = "*"

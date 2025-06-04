@@ -1,60 +1,78 @@
-// #![recursion_limit = "1024"]  // haven't needed it...yet
-pub mod basis;
-pub mod collector;
-pub mod field;
-pub mod marker;
-pub mod metric;
-pub mod mvect;
-pub mod parity;
-pub mod pga2d;
-pub mod traits;
-pub mod utils;
-pub mod vga3d;
-pub mod vga6d;
+use proc_macro::TokenStream;
+use quote::ToTokens;
+use syn::{parse_macro_input, punctuated::Punctuated};
 
-// trait GeometricAlgebra:  b mv
-//     Copy              // ☑ ☑
-//     + Clone           // ☑ ☑
-//     + Default         // ☑ ☑
-//     + Display         // ☑ ☑
-//     + PartialEq       // ☑ ☑
-//     + Index<Basis>    // ☒ ☑
-//     + IndexMut<Basis> // ☒ ☑
-//     + Add             // ☑ ☑ Addition
-//     + Sub             // ☑ ☑ Subtraction
-//     + BitXor          // ☑ ☑ Outer Product
-//     + Mul             // ☑ ☑ Geometric Product
-//     + Mul<F>          // ☑ ☑ Field Product
-//     + Commutator      // ☑ ☑ Commutator
-//     + ScalarProduct   // ☑ ☑ Scalar Product
-//     + FatDot          // ☑ ☑ "Fat" Dot Product
-//     + BitAnd          // ☑ ☑ Regressive Product
-//     + BitOr           // ☑ ☑ Inner Product
-//     + Shl             // ☑ ☑ Left Contraction
-//     + Shr             // ☑ ☑ Right Contraction
-//     + Dual + Not      // ☑ ☑ Dual
-//     + Undual          // ☑ ☑ Undual
-//     + Rem             // ☐ ☐
-//     + Grade           // ☑ ☒ Grade
-//     + Neg             // ☑ ☑ Negate
-//     + Involute        // ☑ ☑ Involute
-//     + Reverse         // ☑ ☑ Reverse
-//     + Conjugate       // ☑ ☑ Conjugate
-//     + Sandwich        // ☑ ☑ Sandwich Product
-//     + Inverse         // ☐ ☐ Inverse
-//     + Div             // ☑ ☑ Division
-//     + Normalize       // ☑ ☐ Normalize
-//     + Exponential     // ☐ ☐ Exponential
-//     + Logarithm       // ☐ ☐ Logarithm
+mod build;
+mod cas;
+mod geometry;
+mod sort;
+mod traits;
 
-/// just typenum::tarr but with elixir style [ a, b, c | rest ] syntax
-#[macro_export]
-macro_rules! ta {
-    () => ( typenum::ATerm );
-    ($n:ty | $tail:ty ) => ( typenum::TArr<$n, $tail>);
-    ($n:ty, $($tail:ty),+ | $rest:ty) => ( typenum::TArr<$n, ta![$($tail),+ | $rest]>);
-    ($n:ty) => ( typenum::TArr<$n, typenum::ATerm> );
-    ($n:ty,) => ( typenum::TArr<$n, typenum::ATerm> );
-    ($n:ty, $($tail:ty),+) => ( typenum::TArr<$n, ta![$($tail),+]> );
-    ($n:ty, $($tail:ty),+,) => ( typenum::TArr<$n, ta![$($tail),+]> );
+/// helper for building syn::Error errors
+macro_rules! err {
+    ($expr:expr, $msg:expr) => {{
+        #[allow(unused_imports)]
+        use syn::spanned::Spanned;
+        syn::Error::new(($expr).span(), $msg)
+    }};
+    ($msg:expr) => {
+        syn::Error::new(proc_macro2::Span::call_site(), $msg)
+    };
+}
+pub(crate) use err;
+
+/// macro for naming shape types
+///     Mv!(e0, e1, e2) -> Mv_e0_e1_e2
+#[proc_macro]
+#[allow(non_snake_case)]
+pub fn Mv(input: TokenStream) -> TokenStream {
+    match build::mv_ty_path(parse_macro_input!(input)) {
+        Ok(path) => path.to_token_stream().into(),
+        Err(e) => e.to_compile_error().to_token_stream().into(),
+    }
+}
+
+/// builds an instance of a specific multivector. Note that because the struct type name is dependant on
+/// the order and orientation of the blades, they must match a predefined shape.
+///     mv![e0: 3, e1: 1, e2: 2] -> Mv_e0_e1_e2{e0: 3, e1: 1, e2: 2}
+#[proc_macro]
+pub fn mv(input: TokenStream) -> TokenStream {
+    match build::mv(parse_macro_input!(input with Punctuated::parse_separated_nonempty)) {
+        Ok(struct_) => struct_.to_token_stream().into(),
+        Err(e) => e.to_compile_error().to_token_stream().into(),
+    }
+}
+
+/// specifies module as a geometric algebra
+#[proc_macro_attribute]
+pub fn algebraic(attrs: TokenStream, input: TokenStream) -> TokenStream {
+    match build::algebraic(parse_macro_input!(attrs), parse_macro_input!(input)) {
+        Ok(mod_) => {
+            // println!(
+            //     "{}",
+            //     prettyplease::unparse(&syn::File {
+            //         shebang: None,
+            //         attrs: vec![],
+            //         items: vec![syn::Item::Mod(mod_.clone())],
+            //     })
+            // );
+            mod_.to_token_stream().into()
+        }
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
+/// declare the value for the square of an axis
+#[proc_macro]
+pub fn square(_: TokenStream) -> TokenStream {
+    err!("square! used outside of reefer module")
+        .into_compile_error()
+        .into()
+}
+/// declare a shape family
+#[proc_macro]
+pub fn shape(_: TokenStream) -> TokenStream {
+    err!("shape! used outside of reefer module")
+        .into_compile_error()
+        .into()
 }
